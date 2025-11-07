@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "username": "papu",
+      "uuid": "dee69226-3d30-435d-ab5e-b43d90c67680",
+      "public_key": "C:\\Users\\baruc\\Documents\\Escuela\\8vo\\Cripto\\Proyecto\\Cliente\\papu_public.pem",
+      "private_key": "C:\\Users\\baruc\\Documents\\Escuela\\8vo\\Cripto\\Proyecto\\Cliente\\papu_private.pem"
+    },
+    {
+      "username": "mamu",
+      "uuid": "1ab35652-73e7-4b23-838b-f5c67a82f575",
+      "public_key": "C:\\Users\\baruc\\Documents\\Escuela\\8vo\\Cripto\\Proyecto\\Cliente\\mamu_public.pem",
+      "private_key": "C:\\Users\\baruc\\Documents\\Escuela\\8vo\\Cripto\\Proyecto\\Cliente\\mamu_private.pem"
+    },
+    {
+      "username": "yo",
+      "uuid": "641279e7-06d4-4f91-9e9e-850f48459d47",
+      "public_key": "C:\\Users\\baruc\\Documents\\Escuela\\8vo\\Cripto\\Proyecto\\Cliente\\yo_public.pem",
+      "private_key": "C:\\Users\\baruc\\Documents\\Escuela\\8vo\\Cripto\\Proyecto\\Cliente\\yo_private.pem"
+    }
+  ]
+}
