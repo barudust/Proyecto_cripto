@@ -87,14 +87,14 @@ def registrar_usuario(
     #    usando 'schemas.UsuarioVer', quitando el hash)
     return nuevo_usuario_db
 
+# (En main_api.py)
+
 @app.post(
     "/token", 
     response_model=schemas.Token,
     summary="Iniciar sesión y obtener un Token de Acceso"
 )
 def login_para_token_acceso(
-    # OAuth2PasswordRequestForm es una clase especial que
-    # recibe 'username' y 'password' desde un formulario
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -108,8 +108,19 @@ def login_para_token_acceso(
         modelos.Usuario.nombre == form_data.username
     ).first()
 
-    # 2. Si no existe o la contraseña es incorrecta, lanzar error
-    if not usuario or not seguridad.verificar_contrasena(
+    # --- ¡LÓGICA CORREGIDA! ---
+    # La dividimos en dos 'if' para evitar el crash
+    
+    # 2. Primero, verificar si el usuario EXISTE
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Nombre de usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    # 3. Segundo, si el usuario existe, VERIFICAR la contraseña
+    if not seguridad.verificar_contrasena(
         form_data.password, usuario.hash_contrasena
     ):
         raise HTTPException(
@@ -117,16 +128,15 @@ def login_para_token_acceso(
             detail="Nombre de usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # --- FIN DE LA CORRECCIÓN ---
 
-    # 3. Si todo es correcto, crear el token
-    # Guardamos el UUID del usuario dentro del token
+    # 4. Si todo es correcto, crear el token
     token = seguridad.crear_token_acceso(
         data={"sub": usuario.uuid}
     )
 
-    # 4. Devolver el token
+    # 5. Devolver el token
     return {"access_token": token, "token_type": "bearer"}
-
 # (En main_api.py)
 
 # (En main_api.py)

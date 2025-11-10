@@ -21,8 +21,7 @@ def verificar_contrasena(contrasena_plana: str, hash_contrasena: str) -> bool:
 def obtener_hash_contrasena(contrasena: str) -> str:
     """Genera un hash para una contraseña plana."""
     return pwd_context.hash(contrasena)
-
-
+ 
 # --- 2. Configuración de JWT (Token de Sesión) ---
 SECRET_KEY = "tu-clave-secreta-aqui-cambiala-por-algo-largo"
 ALGORITHM = "HS256"
