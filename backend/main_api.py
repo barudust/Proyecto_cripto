@@ -274,6 +274,8 @@ async def subir_documento(
 
 # (En main_api.py)
 
+# (En main_api.py)
+
 @app.get(
     "/documentos/recibidos",
     response_model=List[schemas.DocumentoInfo],
@@ -287,26 +289,27 @@ def listar_documentos_recibidos(
     Devuelve una lista de todos los documentos a los que el
     usuario actual (identificado por su token) tiene acceso.
     
-    Busca en la tabla DEK todos los 'documento_id' asociados
-    con el UUID del usuario actual.
+    --- VERSIÓN CORREGIDA ---
+    Usa un JOIN para encontrar los documentos de forma más directa.
     """
     
-    # 1. Obtener los IDs de las DEKs a las que el usuario tiene acceso
-    #    (Esto es una sub-consulta)
-    ids_documentos_accesibles = db.query(modelos.DEK.documento_id).filter(
-        modelos.DEK.usuario_uuid == usuario_actual.uuid
+    # 1. Buscamos en la tabla Documento y la "unimos" (join)
+    #    con la tabla DEK.
+    # 2. Filtramos para que solo nos dé los documentos donde la DEK
+    #    pertenece a nuestro usuario actual.
+    
+    documentos = (
+        db.query(modelos.Documento)
+        .join(modelos.DEK, modelos.Documento.id == modelos.DEK.documento_id)
+        .filter(modelos.DEK.usuario_uuid == usuario_actual.uuid)
+        .all()
     )
-    
-    # 2. Buscar todos los Documentos que están en esa lista de IDs
-    documentos = db.query(modelos.Documento).filter(
-        modelos.Documento.id.in_(ids_documentos_accesibles)
-    ).all()
-    
-    # 3. Formatear la respuesta (¡importante!)
-    #    Necesitamos buscar el UUID del propietario de CADA documento.
+
+    # 3. Formatear la respuesta
+    #    (Esta parte es la misma que antes)
     respuesta = []
     for doc in documentos:
-        # doc.propietario es la relación que definimos en modelos.py
+        # doc.propietario es la relación
         propietario_uuid = doc.propietario.uuid 
         
         info = schemas.DocumentoInfo(
