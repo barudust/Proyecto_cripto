@@ -1,28 +1,22 @@
-# cliente_gui/main_app.py
 import tkinter as tk
 from tkinter import messagebox, simpledialog, filedialog, Listbox, Scrollbar, Toplevel, MULTIPLE
-
-# Importamos todas las "herramientas" que construimos
 import api_cliente
 import logica_claves
 import logica_cifrado
 import logica_descifrado
-
 import os
 
-# --- CLASE PARA LA VENTANA POP-UP DE SELECCIÓN DE CONTACTOS ---
 class DialogoSeleccionReceptores(Toplevel):
-    def __init__(self, parent, contactos):
+    def __init__(self, parent, contactos, mi_uuid):
         super().__init__(parent)
         self.title("Seleccionar Receptores")
         self.geometry("300x400")
         
         self.contactos = contactos
-        self.receptores_seleccionados = [] # Aquí guardamos los dicts
+        self.receptores_seleccionados = [] 
 
         tk.Label(self, text="Selecciona uno o más receptores:").pack(pady=10)
 
-        # Frame para la lista
         list_frame = tk.Frame(self)
         list_frame.pack(fill="both", expand=True, padx=10)
 
@@ -33,38 +27,33 @@ class DialogoSeleccionReceptores(Toplevel):
         scrollbar.pack(side="right", fill="y")
         self.lista_box.pack(side="left", fill="both", expand=True)
 
-        # Llenar la lista
+        self.indices_map = []
         for contacto in self.contactos:
-            # Añadimos el nombre para que el usuario lo vea
-            self.lista_box.insert("end", contacto["nombre"])
+            if contacto["uuid"] != mi_uuid:
+                self.lista_box.insert("end", contacto["nombre"])
+                self.indices_map.append(contacto)
 
         btn_seleccionar = tk.Button(self, text="Seleccionar", command=self.seleccionar)
         btn_seleccionar.pack(pady=10)
         
-        # Hacer que la ventana sea "modal" (bloquea la ventana principal)
         self.transient(parent)
         self.grab_set()
         parent.wait_window(self)
 
     def seleccionar(self):
         indices_seleccionados = self.lista_box.curselection()
-        
-        # Mapeamos los índices de vuelta a los objetos de contacto
         for i in indices_seleccionados:
-            self.receptores_seleccionados.append(self.contactos[i])
-            
+            self.receptores_seleccionados.append(self.indices_map[i])   
         if not self.receptores_seleccionados:
             messagebox.showerror("Error", "Debes seleccionar al menos un receptor.", parent=self)
             return
-            
-        self.destroy() # Cerrar la ventana pop-up
+        self.destroy() 
 
-# --- CLASE PRINCIPAL DE LA APLICACIÓN ---
 class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Cliente de Documentos Seguros")
-        self.root.geometry("600x500")
+        self.root.geometry("700x600") # Un poco más grande para los nuevos botones
 
         self.token = None
         self.nombre_usuario = None
@@ -75,7 +64,6 @@ class App:
         self.mostrar_ventana_login()
 
     def mostrar_ventana_login(self):
-        # ... (Esta función es idéntica a la que ya tienes)
         self.limpiar_ventana()
         login_frame = tk.Frame(self.root, pady=20)
         login_frame.pack(expand=True)
@@ -100,7 +88,6 @@ class App:
             self.token = api_cliente.login(usuario, password)
             self.nombre_usuario = usuario
             
-            # Obtenemos la lista de contactos y nuestro propio UUID
             self.contactos = api_cliente.obtener_contactos(self.token)
             mi_info_encontrada = False
             for c in self.contactos:
@@ -110,8 +97,7 @@ class App:
                     break
             
             if not mi_info_encontrada:
-                # Esto podría pasar si el usuario es nuevo y aún no tiene clave pública
-                print("Advertencia: No se encontró el UUID del usuario (quizás no ha subido su clave).")
+                print("Advertencia: No se encontró el UUID del usuario.")
             
             self.mostrar_ventana_principal()
         except Exception as e:
@@ -130,36 +116,56 @@ class App:
             self.mostrar_error(str(e))
             
     def mostrar_ventana_principal(self):
-        # ... (Idéntica a la que ya tienes, pero con la función de cifrado)
         self.limpiar_ventana()
         main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill="both", expand=True)
-        tk.Label(main_frame, text=f"Bienvenido, {self.nombre_usuario}", font=("Arial", 16)).pack(anchor="w")
-        btn_frame = tk.Frame(main_frame)
-        btn_frame.pack(fill="x", pady=10)
-        btn_generar_claves = tk.Button(btn_frame, text="Generar/Subir Claves", command=self.generar_y_subir_claves)
-        btn_generar_claves.pack(side="left", padx=5)
         
-        # ¡Este botón ahora funciona!
-        btn_cifrar = tk.Button(btn_frame, text="Cifrar Nuevo Archivo", command=self.ejecutar_cifrado_completo)
-        btn_cifrar.pack(side="left", padx=5)
+        # Cabecera
+        header_frame = tk.Frame(main_frame)
+        header_frame.pack(fill="x", pady=5)
+        tk.Label(header_frame, text=f"Usuario: {self.nombre_usuario}", font=("Arial", 14, "bold")).pack(side="left")
+        btn_refrescar = tk.Button(header_frame, text="🔄 Refrescar", command=self.refrescar_bandeja)
+        btn_refrescar.pack(side="right")
 
-        tk.Label(main_frame, text="Documentos Recibidos:", font=("Arial", 12)).pack(anchor="w", pady=(10,0))
+        # Botones de Gestión de Claves y Cifrado
+        action_frame = tk.Frame(main_frame, pady=10)
+        action_frame.pack(fill="x")
+        
+        btn_generar_claves = tk.Button(action_frame, text="🔑 Generar/Subir Claves", command=self.generar_y_subir_claves, bg="#e1f5fe")
+        btn_generar_claves.pack(side="left", padx=5, fill="x", expand=True)
+        
+        btn_cifrar = tk.Button(action_frame, text="🔒 Cifrar y Subir Archivo", command=self.ejecutar_cifrado_completo, bg="#e1f5fe")
+        btn_cifrar.pack(side="left", padx=5, fill="x", expand=True)
+
+        # Bandeja de Entrada
+        tk.Label(main_frame, text="Bandeja de Entrada (Documentos):", font=("Arial", 12)).pack(anchor="w", pady=(15,0))
+        
         list_frame = tk.Frame(main_frame)
-        list_frame.pack(fill="both", expand=True)
+        list_frame.pack(fill="both", expand=True, pady=5)
+        
         scrollbar = tk.Scrollbar(list_frame, orient="vertical")
-        self.lista_documentos = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=15)
+        self.lista_documentos = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=10, font=("Consolas", 10))
         scrollbar.config(command=self.lista_documentos.yview)
         scrollbar.pack(side="right", fill="y")
         self.lista_documentos.pack(side="left", fill="both", expand=True)
         
-        self.lista_documentos.bind("<Double-Button-1>", self.ejecutar_descifrado)
-        btn_refrescar = tk.Button(main_frame, text="Refrescar Bandeja", command=self.refrescar_bandeja)
-        btn_refrescar.pack(pady=10)
+        # --- ZONA DE ACCIONES DE DESCARGA (SEPARADAS) ---
+        tk.Label(main_frame, text="Acciones para el documento seleccionado:", font=("Arial", 10, "italic")).pack(anchor="w", pady=(10,5))
+        
+        botones_descarga_frame = tk.Frame(main_frame)
+        botones_descarga_frame.pack(fill="x")
+        
+        # Botón 1: Solo Descifrar
+        btn_descifrar = tk.Button(botones_descarga_frame, text="📂 Descifrar y Guardar", command=self.accion_solo_descifrar, bg="#fff9c4")
+        btn_descifrar.pack(side="left", padx=5, fill="x", expand=True)
+        
+        # Botón 2: Solo Verificar
+        btn_verificar = tk.Button(botones_descarga_frame, text="✅ Verificar Firma", command=self.accion_solo_verificar, bg="#c8e6c9")
+        btn_verificar.pack(side="left", padx=5, fill="x", expand=True)
+
         self.refrescar_bandeja()
 
     def refrescar_bandeja(self):
-        # ... (Idéntica a la que ya tienes)
         try:
             self.lista_documentos.delete(0, "end")
             documentos = api_cliente.listar_documentos_recibidos(self.token)
@@ -173,55 +179,96 @@ class App:
                     if c["uuid"] == doc["propietario_uuid"]:
                         autor_nombre = c["nombre"]
                         break
-                texto = f"{doc['nombre_original']} (ID: {doc['id']}) (De: {autor_nombre})"
+                # Mostramos un texto formateado
+                texto = f"[{doc['id']}] {doc['nombre_original']} | De: {autor_nombre}"
                 self.lista_documentos.insert("end", texto)
         except Exception as e:
             self.mostrar_error(str(e))
 
-    def ejecutar_descifrado(self, event):
-        # ... (Idéntica a la que ya tienes)
-        try:
-            seleccion = self.lista_documentos.curselection()
-            if not seleccion: return
-            doc_info = self.documentos_en_lista[seleccion[0]]
-            doc_id = doc_info["id"]
-            
-            ruta_privada = filedialog.askopenfilename(title="Selecciona tu Clave Privada (.pem)", filetypes=[("PEM files", "*.pem")])
-            if not ruta_privada: return
-            pass_privada = simpledialog.askstring("Contraseña", "Contraseña de tu clave privada:", show="*")
-            if not pass_privada: return
+    # --- HELPER: PREPARA EL TERRENO (Descarga y Descifra en Memoria) ---
+    def _preparar_datos_documento(self):
+        """
+        Función auxiliar que hace el trabajo sucio:
+        1. Obtiene selección.
+        2. Pide clave privada.
+        3. Descarga el ZIP.
+        4. Descifra en memoria.
+        Devuelve: (plaintext_bytes, firma_bytes, autor_uuid, nombre_original_doc) o None si falla.
+        """
+        seleccion = self.lista_documentos.curselection()
+        if not seleccion: 
+            self.mostrar_error("Primero selecciona un documento de la lista.")
+            return None
 
-            self.mostrar_exito("Descargando y descifrando...")
+        doc_info = self.documentos_en_lista[seleccion[0]]
+        doc_id = doc_info["id"]
+        
+        ruta_privada = filedialog.askopenfilename(title="Selecciona tu Clave Privada (.pem)", filetypes=[("PEM files", "*.pem")])
+        if not ruta_privada: return None
+        
+        pass_privada = simpledialog.askstring("Contraseña", "Contraseña de tu clave privada:", show="*")
+        if not pass_privada: return None
+
+        try:
+            self.mostrar_exito("Procesando... Espere.") # Feedback visual simple
             zip_bytes = api_cliente.descargar_documento_zip(self.token, doc_id)
             
-            clave_autor = None
-            for c in self.contactos:
-                if c["uuid"] == doc_info["propietario_uuid"]:
-                    clave_autor = c["clave_publica"]
-                    break
-            if not clave_autor:
-                raise Exception("No se encontró la clave pública del autor para verificar la firma.")
-
-            plaintext, firma_valida = logica_descifrado.descifrar_paquete(
+            plaintext, firma_bytes, autor_uuid = logica_descifrado.descifrar_contenido(
                 zip_bytes=zip_bytes,
                 mi_uuid=self.uuid_usuario,
                 ruta_clave_privada=ruta_privada,
-                password_clave_privada=pass_privada,
-                clave_publica_autor=clave_autor
+                password_clave_privada=pass_privada
             )
+            return (plaintext, firma_bytes, autor_uuid, doc_info['nombre_original'])
             
-            ruta_guardado = filedialog.asksaveasfilename(title="Guardar archivo descifrado", initialfile=f"DESCIFRADO_{doc_info['nombre_original']}")
-            if not ruta_guardado: return
-            
-            with open(ruta_guardado, "wb") as f: f.write(plaintext)
-            
-            firma_texto = "¡FIRMA VÁLIDA!" if firma_valida else "¡FIRMA INVÁLIDA O CORRUPTA!"
-            self.mostrar_exito(f"¡Archivo guardado!\n{ruta_guardado}\n\nVerificación de firma: {firma_texto}")
         except Exception as e:
-            self.mostrar_error(f"Error al descifrar: {e}")
+            self.mostrar_error(f"Error en el proceso: {e}")
+            return None
+
+    # --- ACCIÓN 1: SOLO DESCIFRAR Y GUARDAR ---
+    def accion_solo_descifrar(self):
+        datos = self._preparar_datos_documento()
+        if not datos: return
+        
+        plaintext, _, _, nombre_orig = datos
+        
+        ruta_guardado = filedialog.asksaveasfilename(title="Guardar Archivo", initialfile=f"DESCIFRADO_{nombre_orig}")
+        if not ruta_guardado: return
+        
+        try:
+            with open(ruta_guardado, "wb") as f: f.write(plaintext)
+            self.mostrar_exito(f"Archivo guardado correctamente en:\n{ruta_guardado}")
+        except Exception as e:
+            self.mostrar_error(f"Error al guardar: {e}")
+
+    # --- ACCIÓN 2: SOLO VERIFICAR FIRMA ---
+    def accion_solo_verificar(self):
+        datos = self._preparar_datos_documento()
+        if not datos: return
+        
+        plaintext, firma_bytes, autor_uuid_zip, _ = datos
+        
+        # Buscar la clave pública del autor
+        clave_autor = None
+        nombre_autor = "Desconocido"
+        for c in self.contactos:
+            if c["uuid"] == autor_uuid_zip:
+                clave_autor = c["clave_publica"]
+                nombre_autor = c["nombre"]
+                break
+        
+        if not clave_autor:
+            self.mostrar_error(f"No se puede verificar.\nNo tienes la clave pública del autor (UUID: {autor_uuid_zip}).")
+            return
+
+        es_valida = logica_descifrado.verificar_firma(plaintext, firma_bytes, clave_autor)
+        
+        if es_valida:
+            messagebox.showinfo("Verificación de Firma", f"✅ FIRMA VÁLIDA\n\nEl documento es auténtico y fue firmado por:\n{nombre_autor}")
+        else:
+            messagebox.showerror("Verificación de Firma", f"❌ FIRMA INVÁLIDA\n\n¡Cuidado! El documento ha sido modificado o no proviene de {nombre_autor}.")
 
     def generar_y_subir_claves(self):
-        # ... (Idéntica a la que ya tienes)
         try:
             pass_privada = simpledialog.askstring("Contraseña de Clave", "Crea una contraseña para tu clave privada (¡NO LA OLVIDES!):", show="*")
             if not pass_privada: return
@@ -240,36 +287,34 @@ class App:
         except Exception as e:
             self.mostrar_error(str(e))
             
-    # --- ¡FUNCIÓN NUEVA Y FINAL! ---
     def ejecutar_cifrado_completo(self):
-        """Reemplaza el placeholder 'mostrar_dialogo_cifrar'."""
         try:
-            # 1. Seleccionar archivo a cifrar
             ruta_original = filedialog.askopenfilename(title="Selecciona un archivo para cifrar")
             if not ruta_original: return
             
-            # 2. Seleccionar clave privada para firmar
             ruta_privada = filedialog.askopenfilename(title="Selecciona TU Clave Privada (.pem) para FIRMAR", filetypes=[("PEM files", "*.pem")])
             if not ruta_privada: return
             
-            # 3. Pedir contraseña de la clave
             pass_privada = simpledialog.askstring("Contraseña", "Contraseña de tu clave privada:", show="*")
             if not pass_privada: return
             
-            # 4. Seleccionar receptores (¡usando la nueva ventana pop-up!)
-            # Nos aseguramos de incluirnos a nosotros mismos
             receptores_disponibles = self.contactos
-            dialogo = DialogoSeleccionReceptores(self.root, receptores_disponibles)
-            # (El código se pausa aquí hasta que el usuario cierre el pop-up)
+            dialogo = DialogoSeleccionReceptores(self.root, receptores_disponibles, self.uuid_usuario)
             
             receptores_seleccionados = dialogo.receptores_seleccionados
             if not receptores_seleccionados:
-                self.mostrar_error("No se seleccionó ningún receptor.")
+                return # Usuario canceló selección
+
+            # Auto-inclusión del autor
+            mi_contacto = next((c for c in self.contactos if c["uuid"] == self.uuid_usuario), None)
+            if mi_contacto:
+                receptores_seleccionados.append(mi_contacto)
+            else:
+                self.mostrar_error("No se encontró tu propia clave pública. Súbela primero.")
                 return
 
-            self.mostrar_exito("Cifrando... esto puede tardar.")
+            self.mostrar_exito("Cifrando y subiendo...")
             
-            # 5. Llamar a la lógica de cifrado
             ruta_zip_temporal, metadata_api = logica_cifrado.crear_paquete_cifrado(
                 ruta_archivo_original=ruta_original,
                 ruta_clave_privada_autor=ruta_privada,
@@ -278,7 +323,6 @@ class App:
                 receptores=receptores_seleccionados
             )
             
-            # 6. Llamar a la API para subir el ZIP
             api_cliente.subir_documento_cifrado(
                 token=self.token,
                 ruta_archivo_zip=ruta_zip_temporal,
@@ -286,28 +330,27 @@ class App:
                 deks_cifradas=metadata_api["deks_cifradas"]
             )
             
-            # 7. Limpiar el ZIP temporal
             if os.path.exists(ruta_zip_temporal):
                 os.remove(ruta_zip_temporal)
                 
             self.mostrar_exito(f"¡Archivo '{metadata_api['nombre_original']}' cifrado y subido con éxito!")
-            
-            # 8. Refrescar la bandeja
             self.refrescar_bandeja()
 
         except Exception as e:
             self.mostrar_error(f"Error en el cifrado: {e}")
 
-    # --- Funciones de Utilidad ---
     def limpiar_ventana(self):
         for widget in self.root.winfo_children():
             widget.destroy()
     def mostrar_error(self, mensaje: str):
         messagebox.showerror("Error", mensaje)
     def mostrar_exito(self, mensaje: str):
-        messagebox.showinfo("Éxito", mensaje)
+        # Usamos print para mensajes rápidos o ventanas temporales,
+        # pero aquí messagebox es mejor para asegurar lectura.
+        # Si prefieres que no bloquee, podrías usar una Label de status.
+        # Por ahora, dejamos messagebox para que sea claro.
+        print(f"INFO: {mensaje}") 
 
-# --- Punto de Entrada ---
 if __name__ == "__main__":
     root = tk.Tk()
     app = App(root)
