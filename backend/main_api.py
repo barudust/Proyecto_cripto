@@ -8,10 +8,9 @@ from seguridad import obtener_usuario_actual
 from typing import List
 import json
 
-# Código maestro para el registro
 CODIGO_MAESTRO = "Documentos_Seguros2025"
 
-# Crear tablas si no existen
+# Crear tablas
 modelos.Base.metadata.create_all(bind=motor)
 
 app = FastAPI(
@@ -56,6 +55,7 @@ def registrar_usuario(
             detail="El nombre de usuario ya está registrado."
         )
 
+    print(f"--- REGISTRANDO USUARIO: {usuario.nombre} ---") 
     hash_contrasena = seguridad.obtener_hash_contrasena(usuario.contrasena)
     nuevo_uuid = str(uuid.uuid4())
 
@@ -116,10 +116,8 @@ def subir_clave_publica(
     db: Session = Depends(get_db),
     usuario_de_token: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
-    # Merge para evitar error de sesión
     usuario_actual = db.merge(usuario_de_token)
     
-    # Borrar DEKs antiguas
     db.query(modelos.DEK).filter(
         modelos.DEK.usuario_uuid == usuario_actual.uuid
     ).delete()
@@ -200,12 +198,15 @@ def listar_documentos_recibidos(
     db: Session = Depends(get_db),
     usuario_actual: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
+    # --- AQUÍ ESTABA EL ERROR ---
+    # Corregido: models.DEK -> modelos.DEK
     documentos = (
         db.query(modelos.Documento)
-        .join(modelos.DEK, modelos.Documento.id == models.DEK.documento_id)
+        .join(modelos.DEK, modelos.Documento.id == modelos.DEK.documento_id)
         .filter(modelos.DEK.usuario_uuid == usuario_actual.uuid)
         .all()
     )
+    # -----------------------------
 
     respuesta = []
     for doc in documentos:
