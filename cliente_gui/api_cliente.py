@@ -196,3 +196,19 @@ def descargar_documento_zip(token: str, documento_id: int) -> bytes:
         raise Exception(f"Error al descargar el documento: {detalle}")
     except requests.exceptions.RequestException as e:
         raise Exception(f"Error de conexión: {e}")
+
+def eliminar_usuario_admin(token: str, uuid_a_borrar: str):
+    url = f"{API_URL}/admin/usuarios/{uuid_a_borrar}"
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        response = requests.delete(url, headers=headers)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        detalle = str(err)
+        try:
+            detalle = err.response.json().get("detail", str(err))
+        except: pass
+        raise Exception(f"Error al eliminar: {detalle}")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Error de conexión: {e}")

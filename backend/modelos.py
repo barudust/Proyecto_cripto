@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, LargeBinary, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, LargeBinary, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -13,6 +13,9 @@ class Usuario(Base):
     clave_publica = Column(Text, nullable=True)
     
     hash_contrasena = Column(String, nullable=False)
+
+    es_admin = Column(Boolean, default=False)
+
     
     documentos = relationship("Documento", back_populates="propietario")
 
