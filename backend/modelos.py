@@ -16,8 +16,7 @@ class Usuario(Base):
 
     es_admin = Column(Boolean, default=False)
 
-    
-    documentos = relationship("Documento", back_populates="propietario")
+    documentos = relationship("Documento", back_populates="propietario", cascade="all, delete-orphan")
 
 class Documento(Base):
     __tablename__ = "documento"

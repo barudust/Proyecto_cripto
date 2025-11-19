@@ -36,9 +36,11 @@ class DialogoSeleccionReceptores(Toplevel):
         self.indices_map = []
         for contacto in self.contactos:
             # No mostrarse a uno mismo en la lista
+            es_admin = contacto.get("es_admin", False)
             if contacto["uuid"] != mi_uuid:
                 self.lista_box.insert("end", contacto["nombre"])
                 self.indices_map.append(contacto)
+                
 
         btn_seleccionar = tk.Button(self, text="Seleccionar", command=self.seleccionar, bg="#4CAF50", fg="white")
         btn_seleccionar.pack(pady=10)

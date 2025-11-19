@@ -52,7 +52,7 @@ class VentanaLogin:
             if not mi_info_encontrada:
                 print("Advertencia: Usuario sin clave pública.")
             
-            self.app.mostrar_ventana_principal()
+            self.app.manejar_login_exitoso()
 
         except Exception as e:
             self.app.mostrar_error(str(e))
