@@ -16,33 +16,46 @@ class DialogoSeleccionReceptores(Toplevel):
     def __init__(self, parent, contactos, mi_uuid):
         super().__init__(parent)
         self.title("Seleccionar Receptores")
-        self.geometry("300x400")
+        self.geometry("350x400")
         
         self.contactos = contactos
         self.receptores_seleccionados = [] 
 
-        tk.Label(self, text="Selecciona uno o más receptores:").pack(pady=10)
+        tk.Label(self, text="Selecciona quién podrá ver el archivo:", font=("Arial", 10, "bold")).pack(pady=10)
+        tk.Label(self, text="(El administrador y tú mismo están ocultos)", font=("Arial", 8), fg="grey").pack(pady=0)
 
         list_frame = tk.Frame(self)
-        list_frame.pack(fill="both", expand=True, padx=10)
+        list_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         scrollbar = Scrollbar(list_frame, orient="vertical")
-        self.lista_box = Listbox(list_frame, yscrollcommand=scrollbar.set, selectmode=MULTIPLE)
+        self.lista_box = Listbox(list_frame, yscrollcommand=scrollbar.set, selectmode=MULTIPLE, font=("Arial", 11))
         scrollbar.config(command=self.lista_box.yview)
         
         scrollbar.pack(side="right", fill="y")
         self.lista_box.pack(side="left", fill="both", expand=True)
 
         self.indices_map = []
+        
+        # --- FILTRADO ROBUSTO ---
         for contacto in self.contactos:
-            # No mostrarse a uno mismo en la lista
-            es_admin = contacto.get("es_admin", False)
-            if contacto["uuid"] != mi_uuid:
-                self.lista_box.insert("end", contacto["nombre"])
-                self.indices_map.append(contacto)
+            # 1. No mostrarse a sí mismo
+            if contacto["uuid"] == mi_uuid:
+                continue
                 
+            # 2. No mostrar al Admin
+            # Verificamos explícitamente si es True
+            es_admin = contacto.get("es_admin")
+            if es_admin is True: 
+                continue
 
-        btn_seleccionar = tk.Button(self, text="Seleccionar", command=self.seleccionar, bg="#4CAF50", fg="white")
+            self.lista_box.insert("end", contacto["nombre"])
+            self.indices_map.append(contacto)
+
+        if not self.indices_map:
+            self.lista_box.insert("end", "(No hay usuarios disponibles)")
+            self.lista_box.config(state="disabled")
+
+        btn_seleccionar = tk.Button(self, text="Confirmar Selección", command=self.seleccionar, bg="#4CAF50", fg="white")
         btn_seleccionar.pack(pady=10)
         
         self.transient(parent)
@@ -50,13 +63,19 @@ class DialogoSeleccionReceptores(Toplevel):
         parent.wait_window(self)
 
     def seleccionar(self):
+        if not self.indices_map:
+            self.destroy()
+            return
+
         indices_seleccionados = self.lista_box.curselection()
         for i in indices_seleccionados:
             self.receptores_seleccionados.append(self.indices_map[i])   
+        
         if not self.receptores_seleccionados:
             messagebox.showerror("Error", "Debes seleccionar al menos un receptor.", parent=self)
             return
-        self.destroy() 
+        self.destroy()
+
 
 class VentanaPrincipal:
     def __init__(self, master, app_instance):
@@ -207,8 +226,17 @@ class VentanaPrincipal:
         
         plaintext, firma_bytes, autor_uuid_zip, _ = datos
         
+        # --- CORRECCIÓN: Actualizar contactos antes de buscar la clave ---
+        try:
+            print("Actualizando lista de claves públicas desde el servidor...")
+            self.app.contactos = api_cliente.obtener_contactos(self.app.token)
+        except Exception as e:
+            print(f"No se pudo actualizar contactos, usando caché: {e}")
+
         clave_autor = None
         nombre_autor = "Desconocido"
+        
+        # Buscamos la clave pública del autor en la lista actualizada
         for c in self.app.contactos:
             if c["uuid"] == autor_uuid_zip:
                 clave_autor = c["clave_publica"]
@@ -216,15 +244,17 @@ class VentanaPrincipal:
                 break
         
         if not clave_autor:
-            self.app.mostrar_error(f"No se puede verificar.\nNo tienes la clave pública del autor (UUID: {autor_uuid_zip}).")
+            self.app.mostrar_error(f"No se puede verificar.\nNo se encontró la clave pública del autor (UUID: {autor_uuid_zip}).\nPosiblemente el autor regeneró sus llaves o fue eliminado.")
             return
 
+        # Ejecutar verificación matemática
         es_valida = logica_descifrado.verificar_firma(plaintext, firma_bytes, clave_autor)
         
         if es_valida:
-            messagebox.showinfo("Verificación de Firma", f"✅ FIRMA VÁLIDA\n\nEl documento es auténtico y fue firmado por:\n{nombre_autor}")
+            messagebox.showinfo("Verificación de Firma", f"✅ FIRMA VÁLIDA\n\nEl documento es auténtico.\nFirmado digitalmente por: {nombre_autor}")
         else:
-            messagebox.showerror("Verificación de Firma", f"❌ FIRMA INVÁLIDA\n\n¡Cuidado! El documento ha sido modificado o no proviene de {nombre_autor}.")
+            messagebox.showerror("Fallo de Verificación", f"❌ FIRMA INVÁLIDA\n\nEl documento pudo haber sido modificado o la clave pública del autor ({nombre_autor}) ha cambiado.")
+
 
     def generar_y_subir_claves(self):
         try:
