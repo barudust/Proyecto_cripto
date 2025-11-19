@@ -287,7 +287,6 @@ class App:
             self.mostrar_exito(f"¡Claves generadas! Tu clave privada se guardó en:\n{ruta_privada}")
         except Exception as e:
             self.mostrar_error(str(e))
-            
     def ejecutar_cifrado_completo(self):
         try:
             ruta_original = filedialog.askopenfilename(title="Selecciona un archivo para cifrar")
@@ -306,12 +305,21 @@ class App:
             if not receptores_seleccionados:
                 return 
 
+            # Auto-inclusión del autor
             mi_contacto = next((c for c in self.contactos if c["uuid"] == self.uuid_usuario), None)
             if mi_contacto:
                 receptores_seleccionados.append(mi_contacto)
             else:
-                self.mostrar_error("No se encontró tu propia clave pública. Súbela primero.")
+                self.mostrar_error("Error interno: No se encontró tu usuario en la lista de contactos.")
                 return
+
+            # --- ¡VALIDACIÓN NUEVA! ---
+            # Verificamos que TODOS tengan clave pública antes de seguir
+            for receptor in receptores_seleccionados:
+                if not receptor.get("clave_publica"):
+                    self.mostrar_error(f"El usuario '{receptor['nombre']}' NO ha generado/subido sus claves todavía.\nNo se puede cifrar para él.")
+                    return
+            # --------------------------
 
             self.mostrar_exito("Cifrando y subiendo...")
             
@@ -337,7 +345,9 @@ class App:
             self.refrescar_bandeja()
 
         except Exception as e:
-            self.mostrar_error(f"Error en el cifrado: {e}")
+            self.mostrar_error(f"Error en el cifrado: {e}")            
+
+
 
     def limpiar_ventana(self):
         for widget in self.root.winfo_children():
