@@ -53,7 +53,7 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Cliente de Documentos Seguros")
-        self.root.geometry("700x600") # Un poco más grande para los nuevos botones
+        self.root.geometry("700x600")
 
         self.token = None
         self.nombre_usuario = None
@@ -109,8 +109,12 @@ class App:
         if not usuario or not password:
             self.mostrar_error("Para registrarse, ingrese un nuevo usuario y contraseña.")
             return
+        
+        codigo = simpledialog.askstring("Seguridad", "Ingrese el Código de Invitación del Despacho:", show="*")
+        if not codigo: return
+
         try:
-            nuevo_usuario = api_cliente.registrar_usuario(usuario, password)
+            nuevo_usuario = api_cliente.registrar_usuario(usuario, password, codigo)
             self.mostrar_exito(f"Usuario '{usuario}' registrado.\nAhora inicia sesión.")
         except Exception as e:
             self.mostrar_error(str(e))
@@ -120,14 +124,19 @@ class App:
         main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill="both", expand=True)
         
-        # Cabecera
         header_frame = tk.Frame(main_frame)
         header_frame.pack(fill="x", pady=5)
         tk.Label(header_frame, text=f"Usuario: {self.nombre_usuario}", font=("Arial", 14, "bold")).pack(side="left")
-        btn_refrescar = tk.Button(header_frame, text="🔄 Refrescar", command=self.refrescar_bandeja)
-        btn_refrescar.pack(side="right")
+        
+        right_header = tk.Frame(header_frame)
+        right_header.pack(side="right")
 
-        # Botones de Gestión de Claves y Cifrado
+        btn_refrescar = tk.Button(right_header, text="🔄 Refrescar", command=self.refrescar_bandeja)
+        btn_refrescar.pack(side="left", padx=5)
+
+        btn_salir = tk.Button(right_header, text="🚪 Salir", command=self.cerrar_sesion, bg="#ffcdd2")
+        btn_salir.pack(side="left", padx=5)
+
         action_frame = tk.Frame(main_frame, pady=10)
         action_frame.pack(fill="x")
         
@@ -137,7 +146,6 @@ class App:
         btn_cifrar = tk.Button(action_frame, text="🔒 Cifrar y Subir Archivo", command=self.ejecutar_cifrado_completo, bg="#e1f5fe")
         btn_cifrar.pack(side="left", padx=5, fill="x", expand=True)
 
-        # Bandeja de Entrada
         tk.Label(main_frame, text="Bandeja de Entrada (Documentos):", font=("Arial", 12)).pack(anchor="w", pady=(15,0))
         
         list_frame = tk.Frame(main_frame)
@@ -149,21 +157,27 @@ class App:
         scrollbar.pack(side="right", fill="y")
         self.lista_documentos.pack(side="left", fill="both", expand=True)
         
-        # --- ZONA DE ACCIONES DE DESCARGA (SEPARADAS) ---
         tk.Label(main_frame, text="Acciones para el documento seleccionado:", font=("Arial", 10, "italic")).pack(anchor="w", pady=(10,5))
         
         botones_descarga_frame = tk.Frame(main_frame)
         botones_descarga_frame.pack(fill="x")
         
-        # Botón 1: Solo Descifrar
         btn_descifrar = tk.Button(botones_descarga_frame, text="📂 Descifrar y Guardar", command=self.accion_solo_descifrar, bg="#fff9c4")
         btn_descifrar.pack(side="left", padx=5, fill="x", expand=True)
         
-        # Botón 2: Solo Verificar
         btn_verificar = tk.Button(botones_descarga_frame, text="✅ Verificar Firma", command=self.accion_solo_verificar, bg="#c8e6c9")
         btn_verificar.pack(side="left", padx=5, fill="x", expand=True)
 
         self.refrescar_bandeja()
+
+    def cerrar_sesion(self):
+        if messagebox.askyesno("Salir", "¿Desea cerrar sesión?"):
+            self.token = None
+            self.nombre_usuario = None
+            self.uuid_usuario = None
+            self.contactos = []
+            self.documentos_en_lista = []
+            self.mostrar_ventana_login()
 
     def refrescar_bandeja(self):
         try:
@@ -179,22 +193,12 @@ class App:
                     if c["uuid"] == doc["propietario_uuid"]:
                         autor_nombre = c["nombre"]
                         break
-                # Mostramos un texto formateado
                 texto = f"[{doc['id']}] {doc['nombre_original']} | De: {autor_nombre}"
                 self.lista_documentos.insert("end", texto)
         except Exception as e:
             self.mostrar_error(str(e))
 
-    # --- HELPER: PREPARA EL TERRENO (Descarga y Descifra en Memoria) ---
     def _preparar_datos_documento(self):
-        """
-        Función auxiliar que hace el trabajo sucio:
-        1. Obtiene selección.
-        2. Pide clave privada.
-        3. Descarga el ZIP.
-        4. Descifra en memoria.
-        Devuelve: (plaintext_bytes, firma_bytes, autor_uuid, nombre_original_doc) o None si falla.
-        """
         seleccion = self.lista_documentos.curselection()
         if not seleccion: 
             self.mostrar_error("Primero selecciona un documento de la lista.")
@@ -210,7 +214,7 @@ class App:
         if not pass_privada: return None
 
         try:
-            self.mostrar_exito("Procesando... Espere.") # Feedback visual simple
+            self.mostrar_exito("Procesando... Espere.")
             zip_bytes = api_cliente.descargar_documento_zip(self.token, doc_id)
             
             plaintext, firma_bytes, autor_uuid = logica_descifrado.descifrar_contenido(
@@ -225,7 +229,6 @@ class App:
             self.mostrar_error(f"Error en el proceso: {e}")
             return None
 
-    # --- ACCIÓN 1: SOLO DESCIFRAR Y GUARDAR ---
     def accion_solo_descifrar(self):
         datos = self._preparar_datos_documento()
         if not datos: return
@@ -241,14 +244,12 @@ class App:
         except Exception as e:
             self.mostrar_error(f"Error al guardar: {e}")
 
-    # --- ACCIÓN 2: SOLO VERIFICAR FIRMA ---
     def accion_solo_verificar(self):
         datos = self._preparar_datos_documento()
         if not datos: return
         
         plaintext, firma_bytes, autor_uuid_zip, _ = datos
         
-        # Buscar la clave pública del autor
         clave_autor = None
         nombre_autor = "Desconocido"
         for c in self.contactos:
@@ -303,9 +304,8 @@ class App:
             
             receptores_seleccionados = dialogo.receptores_seleccionados
             if not receptores_seleccionados:
-                return # Usuario canceló selección
+                return 
 
-            # Auto-inclusión del autor
             mi_contacto = next((c for c in self.contactos if c["uuid"] == self.uuid_usuario), None)
             if mi_contacto:
                 receptores_seleccionados.append(mi_contacto)
@@ -345,10 +345,6 @@ class App:
     def mostrar_error(self, mensaje: str):
         messagebox.showerror("Error", mensaje)
     def mostrar_exito(self, mensaje: str):
-        # Usamos print para mensajes rápidos o ventanas temporales,
-        # pero aquí messagebox es mejor para asegurar lectura.
-        # Si prefieres que no bloquee, podrías usar una Label de status.
-        # Por ahora, dejamos messagebox para que sea claro.
         print(f"INFO: {mensaje}") 
 
 if __name__ == "__main__":
