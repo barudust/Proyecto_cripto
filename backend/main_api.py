@@ -8,6 +8,10 @@ from seguridad import obtener_usuario_actual
 from typing import List
 import json
 
+# Código maestro para el registro
+CODIGO_MAESTRO = "Documentos_Seguros2025"
+
+# Crear tablas si no existen
 modelos.Base.metadata.create_all(bind=motor)
 
 app = FastAPI(
@@ -16,18 +20,15 @@ app = FastAPI(
 )
 
 def get_db():
-
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-
 @app.get("/")
 def leer_raiz():
     return {"mensaje": "Bienvenido a la API de Documentos Seguros"}
-
 
 @app.post(
     "/usuarios/registrar", 
@@ -39,6 +40,11 @@ def registrar_usuario(
     usuario: schemas.UsuarioCrear, 
     db: Session = Depends(get_db)
 ):
+    if usuario.codigo_invitacion != CODIGO_MAESTRO:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Código de invitación inválido. No tienes permiso para registrarte."
+        )
  
     db_usuario = db.query(modelos.Usuario).filter(
         modelos.Usuario.nombre == usuario.nombre
@@ -50,9 +56,7 @@ def registrar_usuario(
             detail="El nombre de usuario ya está registrado."
         )
 
-    print(f"--- REGISTRANDO USUARIO: {usuario.nombre} ---") 
     hash_contrasena = seguridad.obtener_hash_contrasena(usuario.contrasena)
-
     nuevo_uuid = str(uuid.uuid4())
 
     nuevo_usuario_db = modelos.Usuario(
@@ -65,10 +69,7 @@ def registrar_usuario(
     db.commit()
     db.refresh(nuevo_usuario_db)
 
-
     return nuevo_usuario_db
-
-
 
 @app.post(
     "/token", 
@@ -79,7 +80,6 @@ def login_para_token_acceso(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-
     usuario = db.query(modelos.Usuario).filter(
         modelos.Usuario.nombre == form_data.username
     ).first()
@@ -106,7 +106,6 @@ def login_para_token_acceso(
 
     return {"access_token": token, "token_type": "bearer"}
 
-
 @app.put(
     "/usuarios/mi-clave-publica",
     response_model=schemas.UsuarioVer,
@@ -117,9 +116,10 @@ def subir_clave_publica(
     db: Session = Depends(get_db),
     usuario_de_token: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
-
+    # Merge para evitar error de sesión
     usuario_actual = db.merge(usuario_de_token)
     
+    # Borrar DEKs antiguas
     db.query(modelos.DEK).filter(
         modelos.DEK.usuario_uuid == usuario_actual.uuid
     ).delete()
@@ -127,12 +127,9 @@ def subir_clave_publica(
     usuario_actual.clave_publica = datos_clave.clave_publica
     
     db.commit()
-    
     db.refresh(usuario_actual)
     
     return usuario_actual
-
-
 
 @app.get(
     "/usuarios",
@@ -143,10 +140,8 @@ def obtener_usuarios(
     db: Session = Depends(get_db),
     usuario_actual: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
-
     usuarios = db.query(modelos.Usuario).all()
     return usuarios
-
 
 @app.post(
     "/documentos/subir",
@@ -155,16 +150,11 @@ def obtener_usuarios(
     summary="Subir un nuevo documento cifrado"
 )
 async def subir_documento(
-
     archivo_zip: UploadFile = File(...),
-    
     metadata_json: str = Form(...), 
-    
     db: Session = Depends(get_db),
     usuario_actual: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
-
-    
     zip_bytes = await archivo_zip.read()
     
     try:
@@ -175,25 +165,23 @@ async def subir_documento(
     nuevo_documento = modelos.Documento(
         propietario_id=usuario_actual.id,
         nombre_archivo=metadata.nombre_original,
-        zip_bytes=zip_bytes #
+        zip_bytes=zip_bytes
     )
     
     db.add(nuevo_documento)
     db.commit()
     db.refresh(nuevo_documento) 
     
-    # 4. Crear las entradas de DEK (quién tiene acceso)
     for dek_info in metadata.deks_cifradas:
         nueva_dek = modelos.DEK(
             documento_id=nuevo_documento.id,
             usuario_uuid=dek_info.usuario_uuid,
-            dek_cifrada=dek_info.dek_cifrada #
+            dek_cifrada=dek_info.dek_cifrada
         )
         db.add(nueva_dek)
         
     db.commit()
     
-    # 5. Preparamos la respuesta (no incluimos el zip_bytes)
     respuesta = schemas.DocumentoInfo(
         id=nuevo_documento.id,
         nombre_original = nuevo_documento.nombre_archivo,
@@ -202,8 +190,6 @@ async def subir_documento(
     )
     
     return respuesta
-
-
 
 @app.get(
     "/documentos/recibidos",
@@ -214,20 +200,15 @@ def listar_documentos_recibidos(
     db: Session = Depends(get_db),
     usuario_actual: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
-
-    
     documentos = (
         db.query(modelos.Documento)
-        .join(modelos.DEK, modelos.Documento.id == modelos.DEK.documento_id)
+        .join(modelos.DEK, modelos.Documento.id == models.DEK.documento_id)
         .filter(modelos.DEK.usuario_uuid == usuario_actual.uuid)
         .all()
     )
 
-    # 3. Formatear la respuesta
-    #    (Esta parte es la misma que antes)
     respuesta = []
     for doc in documentos:
-        # doc.propietario es la relación
         propietario_uuid = doc.propietario.uuid 
         
         info = schemas.DocumentoInfo(
@@ -240,9 +221,6 @@ def listar_documentos_recibidos(
 
     return respuesta
 
-
-# (En main_api.py)
-
 @app.get(
     "/documentos/descargar/{documento_id}",
     summary="Descargar el ZIP cifrado de un documento"
@@ -252,8 +230,6 @@ def descargar_documento(
     db: Session = Depends(get_db),
     usuario_actual: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
-
-    # 1. Verificar que el usuario tiene acceso
     dek_acceso = db.query(modelos.DEK).filter(
         modelos.DEK.documento_id == documento_id,
         modelos.DEK.usuario_uuid == usuario_actual.uuid
@@ -271,7 +247,6 @@ def descargar_documento(
     
     if not documento:
         raise HTTPException(status_code=404, detail="Documento no encontrado.")
-        
 
     return Response(
         content=documento.zip_bytes,
@@ -280,9 +255,3 @@ def descargar_documento(
             "Content-Disposition": f"attachment; filename=secure_document_{documento_id}.zip"
         }
     )
-
-
-
-
-
-

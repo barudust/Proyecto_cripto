@@ -1,4 +1,3 @@
-# cliente_gui/api_cliente.py
 import requests
 import json
 import os
@@ -7,17 +6,15 @@ import os
 # Usamos ngrok o la IP del servidor en el futuro
 API_URL = "http://127.0.0.1:8000"
 
-def registrar_usuario(nombre: str, contrasena: str):
-    """
-    Llama al endpoint POST /usuarios/registrar.
-    Envía los datos como un JSON.
-    """
+def registrar_usuario(nombre: str, contrasena: str, codigo: str):
+
     url = f"{API_URL}/usuarios/registrar"
     
     # Los datos que el schema 'UsuarioCrear' espera
     datos = {
         "nombre": nombre,
-        "contrasena": contrasena
+        "contrasena": contrasena,
+        "codigo_invitacion": codigo
     }
     
     try:
@@ -72,15 +69,10 @@ def login(username: str, password: str) -> str:
 # (En cliente_gui/api_cliente.py)
 
 def subir_clave_publica(token: str, clave_publica_pem: str):
-    """
-    Llama al endpoint PUT /usuarios/mi-clave-publica.
-    Envía el token en la cabecera (Header) para autenticarse.
-    Envía la clave pública como un JSON.
-    """
+
     url = f"{API_URL}/usuarios/mi-clave-publica"
     
-    # 1. Prepara la cabecera de autenticación
-    #    Así es como "probamos" quiénes somos
+
     headers = {
         "Authorization": f"Bearer {token}"
     }
@@ -133,39 +125,29 @@ def subir_documento_cifrado(
     nombre_original: str, 
     deks_cifradas: list
 ):
-    """
-    Llama al endpoint POST /documentos/subir.
-    Esto envía el archivo ZIP y los metadatos como un 
-    formulario 'multipart/form-data'.
-    """
+
     url = f"{API_URL}/documentos/subir"
     headers = {"Authorization": f"Bearer {token}"}
     
-    # 1. Prepara los metadatos como un string de JSON
-    #    (Esto coincide con el schema 'DocumentoCrear')
+
     metadata = {
         "nombre_original": nombre_original,
         "deks_cifradas": deks_cifradas
     }
     metadata_json = json.dumps(metadata)
     
-    # 2. Prepara el 'payload' del formulario
     datos_formulario = {
         "metadata_json": metadata_json
     }
     
     try:
-        # 3. Abre el archivo ZIP en modo 'lectura binaria' ('rb')
         with open(ruta_archivo_zip, "rb") as f_zip:
             
-            # 4. Prepara el archivo para la subida
             archivos_formulario = {
                 "archivo_zip": (os.path.basename(ruta_archivo_zip), f_zip, "application/zip")
             }
             
-            # 5. Envía la petición
-            #    'data' se usa para los campos de texto
-            #    'files' se usa para los archivos
+
             response = requests.post(
                 url, 
                 headers=headers, 
@@ -175,7 +157,6 @@ def subir_documento_cifrado(
             
             response.raise_for_status()
             
-            # Devuelve el JSON con la info del documento subido
             return response.json()
 
     except requests.exceptions.HTTPError as err:
@@ -186,13 +167,9 @@ def subir_documento_cifrado(
     except requests.exceptions.RequestException as e:
         raise Exception(f"Error de conexión: {e}")
 
-# (En cliente_gui/api_cliente.py)
 
 def listar_documentos_recibidos(token: str) -> list:
-    """
-    Llama al endpoint GET /documentos/recibidos para obtener la
-    "bandeja de entrada" de documentos del usuario.
-    """
+
     url = f"{API_URL}/documentos/recibidos"
     headers = {"Authorization": f"Bearer {token}"}
     
