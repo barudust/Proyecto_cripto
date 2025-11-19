@@ -28,6 +28,7 @@ class UsuarioVer(BaseModel):
     nombre: str
     uuid: str
     clave_publica: Optional[str] = None
+    es_admin: bool
 
     class Config:
         from_attributes = True
