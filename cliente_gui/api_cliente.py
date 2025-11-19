@@ -4,7 +4,7 @@ import os
 
 # Esta es la dirección de tu "cocina" (el backend)
 # Usamos ngrok o la IP del servidor en el futuro
-API_URL = "http://127.0.0.1:8000"
+API_URL = "http://100.96.237.21:8000"
 
 def registrar_usuario(nombre: str, contrasena: str, codigo: str):
 
