@@ -8,9 +8,9 @@ from seguridad import obtener_usuario_actual
 from typing import List
 import json
 
-CODIGO_MAESTRO = "Documentos_Seguros2025"
+CODIGO_USUARIO = "Abogado2025"
+CODIGO_ADMIN = "SocioFundadorVIP"
 
-# Crear tablas
 modelos.Base.metadata.create_all(bind=motor)
 
 app = FastAPI(
@@ -39,10 +39,16 @@ def registrar_usuario(
     usuario: schemas.UsuarioCrear, 
     db: Session = Depends(get_db)
 ):
-    if usuario.codigo_invitacion != CODIGO_MAESTRO:
+    es_admin_nuevo = False
+    
+    if usuario.codigo_invitacion == CODIGO_ADMIN:
+        es_admin_nuevo = True
+    elif usuario.codigo_invitacion == CODIGO_USUARIO:
+        es_admin_nuevo = False
+    else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Código de invitación inválido. No tienes permiso para registrarte."
+            detail="Código de invitación inválido."
         )
  
     db_usuario = db.query(modelos.Usuario).filter(
@@ -55,14 +61,15 @@ def registrar_usuario(
             detail="El nombre de usuario ya está registrado."
         )
 
-    print(f"--- REGISTRANDO USUARIO: {usuario.nombre} ---") 
+    print(f"--- REGISTRANDO USUARIO: {usuario.nombre} (Admin: {es_admin_nuevo}) ---") 
     hash_contrasena = seguridad.obtener_hash_contrasena(usuario.contrasena)
     nuevo_uuid = str(uuid.uuid4())
 
     nuevo_usuario_db = modelos.Usuario(
         nombre=usuario.nombre,
         hash_contrasena=hash_contrasena,
-        uuid=nuevo_uuid
+        uuid=nuevo_uuid,
+        es_admin=es_admin_nuevo
     )
 
     db.add(nuevo_usuario_db)
@@ -198,15 +205,12 @@ def listar_documentos_recibidos(
     db: Session = Depends(get_db),
     usuario_actual: modelos.Usuario = Depends(obtener_usuario_actual)
 ):
-    # --- AQUÍ ESTABA EL ERROR ---
-    # Corregido: models.DEK -> modelos.DEK
     documentos = (
         db.query(modelos.Documento)
         .join(modelos.DEK, modelos.Documento.id == modelos.DEK.documento_id)
         .filter(modelos.DEK.usuario_uuid == usuario_actual.uuid)
         .all()
     )
-    # -----------------------------
 
     respuesta = []
     for doc in documentos:
@@ -256,3 +260,25 @@ def descargar_documento(
             "Content-Disposition": f"attachment; filename=secure_document_{documento_id}.zip"
         }
     )
+
+@app.delete("/admin/usuarios/{usuario_uuid}", status_code=204)
+def eliminar_usuario(
+    usuario_uuid: str,
+    db: Session = Depends(get_db),
+    admin_actual: modelos.Usuario = Depends(obtener_usuario_actual)
+):
+    if not admin_actual.es_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="No eres administrador."
+        )
+        
+    victima = db.query(modelos.Usuario).filter(modelos.Usuario.uuid == usuario_uuid).first()
+    if not victima:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+        
+    db.query(modelos.DEK).filter(modelos.DEK.usuario_uuid == usuario_uuid).delete()
+    
+    db.delete(victima)
+    db.commit()
+    return
