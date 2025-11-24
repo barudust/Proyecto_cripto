@@ -5,35 +5,121 @@ import api_cliente
 class VentanaLogin:
     def __init__(self, master, app_instance):
         self.master = master
-        self.app = app_instance # Instancia de la clase App (el controlador)
+        self.app = app_instance
         
-        # Frame principal de la vista
-        self.frame = tk.Frame(master, pady=20)
-        self.frame.pack(expand=True)
-
-        tk.Label(self.frame, text="Usuario:", font=("Arial", 12)).grid(row=0, column=0, sticky="e", pady=5, padx=5)
-        self.entry_usuario = tk.Entry(self.frame, font=("Arial", 12), width=20)
-        self.entry_usuario.grid(row=0, column=1, pady=5, padx=5)
-
-        tk.Label(self.frame, text="Contraseña:", font=("Arial", 12)).grid(row=1, column=0, sticky="e", pady=5, padx=5)
-        self.entry_pass = tk.Entry(self.frame, font=("Arial", 12), width=20, show="*")
-        self.entry_pass.grid(row=1, column=1, pady=5, padx=5)
-
-        btn_login = tk.Button(self.frame, text="Iniciar Sesión", command=self.ejecutar_login, font=("Arial", 12), bg="#4CAF50", fg="white")
-        btn_login.grid(row=2, column=0, columnspan=2, pady=10)
+        # Acceder a la paleta de colores de la app principal
+        self.colores = app_instance.colores
         
-        btn_registrar = tk.Button(self.frame, text="Registrarse", command=self.ejecutar_registro, font=("Arial", 10))
-        btn_registrar.grid(row=3, column=0, columnspan=2, pady=5)
+        # Frame principal con el mismo fondo que la app
+        self.frame = tk.Frame(master, pady=30, bg=self.colores['light'])
+        self.frame.pack(expand=True, fill='both')
         
-        tk.Label(master, text="Cód. Usuario: Abogado2025 | Cód. Admin: SocioFundadorVIP", fg="grey").pack(side="bottom", pady=5)
+        # Título del formulario
+        titulo = tk.Label(self.frame, 
+                         text="Iniciar Sesión", 
+                         font=("Segoe UI", 16, "bold"),
+                         fg=self.colores['primary'],
+                         bg=self.colores['light'])
+        titulo.pack(pady=(0, 20))
+
+        # Frame para los campos del formulario
+        form_frame = tk.Frame(self.frame, bg=self.colores['light'])
+        form_frame.pack(pady=10)
+
+        # Campo Usuario
+        lbl_usuario = tk.Label(form_frame, 
+                              text="Usuario:", 
+                              font=("Segoe UI", 11),
+                              fg=self.colores['text'],
+                              bg=self.colores['light'])
+        lbl_usuario.grid(row=0, column=0, sticky="e", pady=8, padx=5)
+        
+        self.entry_usuario = tk.Entry(form_frame, 
+                                     font=("Segoe UI", 11),
+                                     width=25,
+                                     bg='white',
+                                     fg=self.colores['text'],
+                                     insertbackground=self.colores['primary'],
+                                     relief='solid',
+                                     borderwidth=1)
+        self.entry_usuario.grid(row=0, column=1, pady=8, padx=5, ipady=4)
+
+        # Campo Contraseña
+        lbl_pass = tk.Label(form_frame, 
+                           text="Contraseña:", 
+                           font=("Segoe UI", 11),
+                           fg=self.colores['text'],
+                           bg=self.colores['light'])
+        lbl_pass.grid(row=1, column=0, sticky="e", pady=8, padx=5)
+        
+        self.entry_pass = tk.Entry(form_frame, 
+                                  font=("Segoe UI", 11),
+                                  width=25,
+                                  show="•",
+                                  bg='white',
+                                  fg=self.colores['text'],
+                                  insertbackground=self.colores['primary'],
+                                  relief='solid',
+                                  borderwidth=1)
+        self.entry_pass.grid(row=1, column=1, pady=8, padx=5, ipady=4)
+
+        # Frame para botones
+        button_frame = tk.Frame(self.frame, bg=self.colores['light'])
+        button_frame.pack(pady=20)
+
+        # Botón Iniciar Sesión
+        btn_login = tk.Button(button_frame, 
+                             text="Iniciar Sesión", 
+                             command=self.ejecutar_login, 
+                             font=("Segoe UI", 11, "bold"),
+                             bg=self.colores['primary'],
+                             fg='white',
+                             relief='flat',
+                             borderwidth=0,
+                             width=15,
+                             cursor='hand2')
+        btn_login.pack(pady=8, ipady=8)
+
+        # Botón Registrarse
+        btn_registrar = tk.Button(button_frame, 
+                                 text="Registrarse", 
+                                 command=self.ejecutar_registro, 
+                                 font=("Segoe UI", 10),
+                                 bg=self.colores['secondary'],
+                                 fg='white',
+                                 relief='flat',
+                                 borderwidth=0,
+                                 width=12,
+                                 cursor='hand2')
+        btn_registrar.pack(pady=5, ipady=6)
+
+        # Información de códigos
+        info_codigos = tk.Label(self.frame, 
+                               text="Cód. Usuario: Abogado2025 | Cód. Admin: SocioFundadorVIP", 
+                               font=("Segoe UI", 9),
+                               fg=self.colores['text_light'],
+                               bg=self.colores['light'])
+        info_codigos.pack(side="bottom", pady=10)
+        
+        # Bind Enter key para facilitar el login
+        self.entry_usuario.bind('<Return>', lambda e: self.entry_pass.focus())
+        self.entry_pass.bind('<Return>', lambda e: self.ejecutar_login())
+        
+        # Focus inicial en el campo de usuario
+        self.entry_usuario.focus_set()
 
     def ejecutar_login(self):
-        usuario = self.entry_usuario.get()
-        password = self.entry_pass.get()
+        usuario = self.entry_usuario.get().strip()
+        password = self.entry_pass.get().strip()
+        
         if not usuario or not password:
             self.app.mostrar_error("Usuario y contraseña son requeridos.")
             return
+        
         try:
+            # Deshabilitar botones durante el login
+            self.master.update_idletasks()
+            
             token = api_cliente.login(usuario, password)
             self.app.token = token
             self.app.nombre_usuario = usuario
@@ -58,14 +144,16 @@ class VentanaLogin:
             self.app.mostrar_error(str(e))
             
     def ejecutar_registro(self):
-        usuario = self.entry_usuario.get()
-        password = self.entry_pass.get()
+        usuario = self.entry_usuario.get().strip()
+        password = self.entry_pass.get().strip()
+        
         if not usuario or not password:
             self.app.mostrar_error("Ingrese usuario y contraseña.")
             return
         
         codigo = simpledialog.askstring("Código de Acceso", "Ingrese Código (Usuario o Admin):", show="*")
-        if not codigo: return
+        if not codigo: 
+            return
 
         try:
             nuevo_usuario = api_cliente.registrar_usuario(usuario, password, codigo)
@@ -74,5 +162,9 @@ class VentanaLogin:
             tipo = "ADMINISTRADOR" if nuevo_usuario.get("es_admin") else "Usuario"
             
             self.app.mostrar_exito(f"¡{tipo} '{usuario}' registrado!\nAhora inicia sesión.")
+            
+            # Limpiar solo la contraseña después del registro
+            self.entry_pass.delete(0, tk.END)
+            
         except Exception as e:
             self.app.mostrar_error(str(e))

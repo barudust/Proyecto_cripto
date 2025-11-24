@@ -82,64 +82,139 @@ class VentanaPrincipal:
         self.master = master
         self.app = app_instance
         
-        main_frame = tk.Frame(master, padx=10, pady=10)
+        # Usar la paleta de colores de la app
+        self.colores = app_instance.colores
+        
+        main_frame = tk.Frame(master, padx=15, pady=15, bg=self.colores['light'])
         main_frame.pack(fill="both", expand=True)
         
         # Cabecera
-        header_frame = tk.Frame(main_frame)
-        header_frame.pack(fill="x", pady=5)
+        header_frame = tk.Frame(main_frame, bg=self.colores['light'])
+        header_frame.pack(fill="x", pady=8)
         
         rol_txt = " (ADMIN)" if self.app.soy_admin else ""
-        color_u = "red" if self.app.soy_admin else "black"
-        tk.Label(header_frame, text=f"Usuario: {self.app.nombre_usuario}{rol_txt}", font=("Arial", 14, "bold"), fg=color_u).pack(side="left")
+        color_u = self.colores['secondary'] if self.app.soy_admin else self.colores['primary']
         
-        right_header = tk.Frame(header_frame)
+        # Información del usuario
+        user_label = tk.Label(header_frame, 
+                             text=f"👤 Usuario: {self.app.nombre_usuario}{rol_txt}", 
+                             font=("Segoe UI", 14, "bold"), 
+                             fg=color_u,
+                             bg=self.colores['light'])
+        user_label.pack(side="left")
+        
+        right_header = tk.Frame(header_frame, bg=self.colores['light'])
         right_header.pack(side="right")
 
         # Botón ADMIN
         if self.app.soy_admin:
-            btn_admin = tk.Button(right_header, text="🛠️ PANEL ADMIN", bg="black", fg="white", command=self.abrir_panel_admin)
-            btn_admin.pack(side="left", padx=10)
+            btn_admin = tk.Button(right_header, 
+                                 text="🛠️ PANEL ADMIN", 
+                                 bg=self.colores['primary'],
+                                 fg='white',
+                                 font=("Segoe UI", 10, "bold"),
+                                 relief='flat',
+                                 command=self.abrir_panel_admin)
+            btn_admin.pack(side="left", padx=8)
 
-        btn_refrescar = tk.Button(right_header, text="🔄 Refrescar", command=self.refrescar_bandeja)
+        # Botón Refrescar
+        btn_refrescar = tk.Button(right_header, 
+                                 text="🔄 Refrescar", 
+                                 bg=self.colores['secondary'],
+                                 fg='white',
+                                 font=("Segoe UI", 10),
+                                 relief='flat',
+                                 command=self.refrescar_bandeja)
         btn_refrescar.pack(side="left", padx=5)
 
-        btn_salir = tk.Button(right_header, text="🚪 Salir", command=self.app.cerrar_sesion, bg="#ffcdd2")
+        # Botón Salir
+        btn_salir = tk.Button(right_header, 
+                             text="🚪 Salir", 
+                             bg=self.colores['danger'],
+                             fg='white',
+                             font=("Segoe UI", 10),
+                             relief='flat',
+                             command=self.app.cerrar_sesion)
         btn_salir.pack(side="left", padx=5)
 
-        # Botones de Acción
-        action_frame = tk.Frame(main_frame, pady=10)
+        # Botones de Acción Principales
+        action_frame = tk.Frame(main_frame, pady=15, bg=self.colores['light'])
         action_frame.pack(fill="x")
         
-        btn_generar_claves = tk.Button(action_frame, text="🔑 Generar/Subir Claves", command=self.generar_y_subir_claves, bg="#e1f5fe")
-        btn_generar_claves.pack(side="left", padx=5, fill="x", expand=True)
+        btn_generar_claves = tk.Button(action_frame, 
+                                      text="🔑 Generar/Subir Claves", 
+                                      command=self.generar_y_subir_claves, 
+                                      bg=self.colores['primary'],
+                                      fg='white',
+                                      font=("Segoe UI", 11, "bold"),
+                                      relief='flat',
+                                      height=2)
+        btn_generar_claves.pack(side="left", padx=8, fill="x", expand=True)
         
-        btn_cifrar = tk.Button(action_frame, text="🔒 Cifrar y Subir Archivo", command=self.ejecutar_cifrado_completo, bg="#e1f5fe")
-        btn_cifrar.pack(side="left", padx=5, fill="x", expand=True)
+        btn_cifrar = tk.Button(action_frame, 
+                              text="🔒 Cifrar y Subir Archivo", 
+                              command=self.ejecutar_cifrado_completo, 
+                              bg=self.colores['secondary'],
+                              fg='white',
+                              font=("Segoe UI", 11, "bold"),
+                              relief='flat',
+                              height=2)
+        btn_cifrar.pack(side="left", padx=8, fill="x", expand=True)
 
-        # Bandeja
-        tk.Label(main_frame, text="Bandeja de Entrada (Documentos):", font=("Arial", 12)).pack(anchor="w", pady=(15,0))
+        # Bandeja de documentos
+        docs_label = tk.Label(main_frame, 
+                             text="📁 Bandeja de Entrada (Documentos):", 
+                             font=("Segoe UI", 12, "bold"),
+                             fg=self.colores['primary'],
+                             bg=self.colores['light'])
+        docs_label.pack(anchor="w", pady=(20, 5))
         
-        list_frame = tk.Frame(main_frame)
-        list_frame.pack(fill="both", expand=True, pady=5)
+        list_frame = tk.Frame(main_frame, bg=self.colores['light'])
+        list_frame.pack(fill="both", expand=True, pady=8)
         
-        scrollbar = tk.Scrollbar(list_frame, orient="vertical")
-        self.lista_documentos = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=10, font=("Consolas", 10))
+        scrollbar = tk.Scrollbar(list_frame, orient="vertical", bg=self.colores['light'])
+        self.lista_documentos = tk.Listbox(list_frame, 
+                                          yscrollcommand=scrollbar.set, 
+                                          height=12, 
+                                          font=("Segoe UI", 10),
+                                          bg='white',
+                                          fg=self.colores['text'],
+                                          selectbackground=self.colores['primary'],
+                                          selectforeground='white')
         scrollbar.config(command=self.lista_documentos.yview)
         scrollbar.pack(side="right", fill="y")
         self.lista_documentos.pack(side="left", fill="both", expand=True)
         
-        # Descarga
-        tk.Label(main_frame, text="Acciones para el documento seleccionado:", font=("Arial", 10, "italic")).pack(anchor="w", pady=(10,5))
+        # Acciones para documento seleccionado
+        acciones_label = tk.Label(main_frame, 
+                                 text="🎯 Acciones para el documento seleccionado:", 
+                                 font=("Segoe UI", 10, "italic"),
+                                 fg=self.colores['text_light'],
+                                 bg=self.colores['light'])
+        acciones_label.pack(anchor="w", pady=(15, 8))
         
-        botones_descarga_frame = tk.Frame(main_frame)
+        botones_descarga_frame = tk.Frame(main_frame, bg=self.colores['light'])
         botones_descarga_frame.pack(fill="x")
         
-        btn_descifrar = tk.Button(botones_descarga_frame, text="📂 Descifrar y Guardar", command=self.accion_solo_descifrar, bg="#fff9c4")
-        btn_descifrar.pack(side="left", padx=5, fill="x", expand=True)
+        btn_descifrar = tk.Button(botones_descarga_frame, 
+                                 text="📂 Descifrar y Guardar", 
+                                 command=self.accion_solo_descifrar, 
+                                 bg=self.colores['success'],
+                                 fg='white',
+                                 font=("Segoe UI", 10),
+                                 relief='flat',
+                                 height=2)
+        btn_descifrar.pack(side="left", padx=8, fill="x", expand=True)
         
-        btn_verificar = tk.Button(botones_descarga_frame, text="✅ Verificar Firma", command=self.accion_solo_verificar, bg="#c8e6c9")
-        btn_verificar.pack(side="left", padx=5, fill="x", expand=True)
+        btn_verificar = tk.Button(botones_descarga_frame, 
+                                 text="✅ Verificar Firma", 
+                                 command=self.accion_solo_verificar, 
+                                 bg=self.colores['warning'],
+                                 fg='white',
+                                 font=("Segoe UI", 10),
+                                 relief='flat',
+                                 height=2)
+        btn_verificar.pack(side="left", padx=8, fill="x", expand=True)
 
         self.refrescar_bandeja()
 
