@@ -1,5 +1,6 @@
 from fastapi.security import OAuth2PasswordRequestForm
-import uuid 
+import uuid
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response
 from sqlalchemy.orm import Session
 import modelos, schemas, seguridad
@@ -76,38 +77,32 @@ def registrar_usuario(
 
     return nuevo_usuario_db
 
-@app.post(
-    "/token", 
-    response_model=schemas.Token,
-    summary="Iniciar sesión y obtener un Token de Acceso"
-)
-def login_para_token_acceso(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
-):
-    usuario = db.query(modelos.Usuario).filter(
-        modelos.Usuario.nombre == form_data.username
-    ).first()
+@app.post("/token", response_model=schemas.Token, summary="Iniciar sesión y obtener un Token de Acceso")
+def login_para_token_acceso(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    usuario = db.query(modelos.Usuario).filter( modelos.Usuario.nombre == form_data.username).first()
 
     if not usuario:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    
+    if usuario.bloqueado_hasta and datetime.utcnow() < usuario.bloqueado_hasta:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nombre de usuario o contraseña incorrectos",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
-    if not seguridad.verificar_contrasena(
-        form_data.password, usuario.hash_contrasena
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nombre de usuario o contraseña incorrectos",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Cuenta bloqueada temporalmente. Intenta más tarde."
+        )    
+    if not seguridad.verificar_contrasena(form_data.password, usuario.hash_contrasena):
+        usuario.intentos_fallidos += 1
+        db.commit()
+        if usuario.intentos_fallidos >= 5:
+            usuario.bloqueado_hasta = datetime.utcnow() + timedelta(minutes=15) # Bloqueo de 15 min
+            db.commit()
+            raise HTTPException(status_code=403, detail="Demasiados intentos. Cuenta bloqueada 15 min.")
+            
+        raise HTTPException(status_code=401, detail=f"Credenciales incorrectas. Intentos: {usuario.intentos_fallidos}/5")
+    usuario.intentos_fallidos = 0
+    usuario.bloqueado_hasta = None
+    db.commit()
 
-    token = seguridad.crear_token_acceso(
-        data={"sub": usuario.uuid}
-    )
+    token = seguridad.crear_token_acceso( data={"sub": usuario.uuid})
 
     return {"access_token": token, "token_type": "bearer"}
 

@@ -17,6 +17,8 @@ class Usuario(Base):
     es_admin = Column(Boolean, default=False)
 
     documentos = relationship("Documento", back_populates="propietario", cascade="all, delete-orphan")
+    intentos_fallidos = Column(Integer, default=0)
+    bloqueado_hasta = Column(DateTime, nullable=True)
 
 class Documento(Base):
     __tablename__ = "documento"
