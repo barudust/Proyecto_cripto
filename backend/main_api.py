@@ -9,7 +9,7 @@ from typing import List
 import json
 
 CODIGO_USUARIO = "Abogado2025"
-CODIGO_ADMIN = "SocioFundadorVIP"
+
 
 modelos.Base.metadata.create_all(bind=motor)
 
@@ -41,9 +41,7 @@ def registrar_usuario(
 ):
     es_admin_nuevo = False
     
-    if usuario.codigo_invitacion == CODIGO_ADMIN:
-        es_admin_nuevo = True
-    elif usuario.codigo_invitacion == CODIGO_USUARIO:
+    if usuario.codigo_invitacion == CODIGO_USUARIO:
         es_admin_nuevo = False
     else:
         raise HTTPException(
