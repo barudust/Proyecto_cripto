@@ -95,7 +95,6 @@ class VentanaLogin:
 
         # Información de códigos
         info_codigos = tk.Label(self.frame, 
-                               text="Cód. Usuario: Abogado2025 | Cód. Admin: SocioFundadorVIP", 
                                font=("Segoe UI", 9),
                                fg=self.colores['text_light'],
                                bg=self.colores['light'])
@@ -151,7 +150,7 @@ class VentanaLogin:
             self.app.mostrar_error("Ingrese usuario y contraseña.")
             return
         
-        codigo = simpledialog.askstring("Código de Acceso", "Ingrese Código (Usuario o Admin):", show="*")
+        codigo = simpledialog.askstring("Código de Acceso", "Ingrese Código:", show="*")
         if not codigo: 
             return
 

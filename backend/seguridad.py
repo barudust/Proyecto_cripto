@@ -10,6 +10,8 @@ from database import SessionLocal # Importa la sesión de BD
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session # <--- ¡AÑADE ESTA LÍNEA!
+from dotenv import load_dotenv
+load_dotenv() 
 
 # --- 1. Configuración de Hashing ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -22,8 +24,15 @@ def obtener_hash_contrasena(contrasena: str) -> str:
     """Genera un hash para una contraseña plana."""
     return pwd_context.hash(contrasena)
  
-# --- 2. Configuración de JWT (Token de Sesión) ---
-SECRET_KEY = "tu-clave-secreta-aqui-cambiala-por-algo-largo"
+base_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(base_dir, ".env")
+load_dotenv(env_path)
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    # Clave de respaldo SOLO para que no truene, pero avisa en consola
+    print("⚠️ ADVERTENCIA: Usando clave insegura por defecto. Revisa tu .env")
+    SECRET_KEY = "clave-insegura-por-defecto"
+# -
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60  # El token durará 1 hora
 

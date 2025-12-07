@@ -7,10 +7,22 @@ import modelos, schemas, seguridad
 from database import SessionLocal, motor 
 from seguridad import obtener_usuario_actual
 from typing import List
-import json
+import json, os
+from dotenv import load_dotenv
+load_dotenv() 
 
-CODIGO_USUARIO = "Abogado2025"
+base_dir = os.path.dirname(os.path.abspath(__file__))
+# 2. Construimos la ruta completa al archivo .env
+env_path = os.path.join(base_dir, ".env")
+# 3. Cargamos esa ruta específica
+load_dotenv(env_path)
 
+# 4. Leemos las variables. Si no existen, lanzamos error para avisarte.
+CODIGO_USUARIO = os.getenv("CODIGO_INVITACION_USUARIO")
+CODIGO_ADMIN = os.getenv("CODIGO_INVITACION_ADMIN")
+
+if not CODIGO_USUARIO or not CODIGO_ADMIN:
+    raise RuntimeError("❌ ERROR CRÍTICO: No se leyeron las variables del archivo .env. Revisa que el archivo exista y tenga los nombres correctos.")
 
 modelos.Base.metadata.create_all(bind=motor)
 
@@ -60,7 +72,7 @@ def registrar_usuario(
             detail="El nombre de usuario ya está registrado."
         )
 
-    print(f"--- REGISTRANDO USUARIO: {usuario.nombre} (Admin: {es_admin_nuevo}) ---") 
+    print(f"--- REGISTRANDO USUARIO: {usuario.nombre} ---") 
     hash_contrasena = seguridad.obtener_hash_contrasena(usuario.contrasena)
     nuevo_uuid = str(uuid.uuid4())
 
