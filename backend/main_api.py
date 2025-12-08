@@ -7,10 +7,11 @@ import modelos, schemas, seguridad
 from database import SessionLocal, motor 
 from seguridad import obtener_usuario_actual
 from typing import List
-import json, os
+import json, os,sys
+from pyngrok import ngrok, conf
 from dotenv import load_dotenv
 load_dotenv() 
-
+NGROK_TOKEN = os.getenv("NGROK_TOKEN")
 base_dir = os.path.dirname(os.path.abspath(__file__))
 # 2. Construimos la ruta completa al archivo .env
 env_path = os.path.join(base_dir, ".env")
@@ -22,8 +23,40 @@ CODIGO_USUARIO = os.getenv("CODIGO_INVITACION_USUARIO")
 CODIGO_ADMIN = os.getenv("CODIGO_INVITACION_ADMIN")
 
 if not CODIGO_USUARIO or not CODIGO_ADMIN:
-    raise RuntimeError("❌ ERROR CRÍTICO: No se leyeron las variables del archivo .env. Revisa que el archivo exista y tenga los nombres correctos.")
+    raise RuntimeError(" ERROR CRÍTICO: No se leyeron las variables del archivo .env. Revisa que el archivo exista y tenga los nombres correctos.")
+def iniciar_tunel_seguro():
+    # Evitamos que se ejecute dos veces (al guardar cambios)
+    if not sys.argv[0].endswith("uvicorn"): 
+        return
 
+    if not NGROK_TOKEN:
+        print(" AVISO: No se encontró NGROK_TOKEN en el .env. El túnel no se iniciará.")
+        return
+
+    print("Iniciando infraestructura de red remota...")
+    
+    # 2. Configuramos Ngrok con tu token
+    conf.get_default().auth_token = NGROK_TOKEN
+    
+    # 3. Abrimos el túnel al puerto 8000
+    try:
+        # pyngrok descarga y gestiona el binario por ti
+        tunel = ngrok.connect(8000)
+        public_url = tunel.public_url
+        
+        print("\n" + "="*60)
+        print(f"✅ TÚNEL SEGURO ACTIVO (Reverse Proxy)")
+        print(f"🌍 URL Pública para el Cliente:  {public_url}")
+        print("="*60 + "\n")
+        
+    except Exception as e:
+        print(f"Error al iniciar el túnel: {e}")
+
+# Ejecutamos la función
+try:
+    iniciar_tunel_seguro()
+except Exception:
+    pass
 modelos.Base.metadata.create_all(bind=motor)
 
 app = FastAPI(
