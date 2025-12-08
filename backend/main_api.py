@@ -44,10 +44,10 @@ def iniciar_tunel_seguro():
         tunel = ngrok.connect(8000)
         public_url = tunel.public_url
         
-        print("\n" + "="*60)
-        print(f"✅ TÚNEL SEGURO ACTIVO (Reverse Proxy)")
-        print(f"🌍 URL Pública para el Cliente:  {public_url}")
-        print("="*60 + "\n")
+       
+        print(f"TÚNEL SEGURO ACTIVO")
+        print(f"URL Pública para el Cliente:  {public_url}")
+     
         
     except Exception as e:
         print(f"Error al iniciar el túnel: {e}")
