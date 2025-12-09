@@ -13,19 +13,13 @@ from dotenv import load_dotenv
 load_dotenv() 
 NGROK_TOKEN = os.getenv("NGROK_TOKEN")
 base_dir = os.path.dirname(os.path.abspath(__file__))
-# 2. Construimos la ruta completa al archivo .env
 env_path = os.path.join(base_dir, ".env")
-# 3. Cargamos esa ruta específica
-load_dotenv(env_path)
 
-# 4. Leemos las variables. Si no existen, lanzamos error para avisarte.
 CODIGO_USUARIO = os.getenv("CODIGO_INVITACION_USUARIO")
-CODIGO_ADMIN = os.getenv("CODIGO_INVITACION_ADMIN")
 
-if not CODIGO_USUARIO or not CODIGO_ADMIN:
+if not CODIGO_USUARIO :
     raise RuntimeError(" ERROR CRÍTICO: No se leyeron las variables del archivo .env. Revisa que el archivo exista y tenga los nombres correctos.")
 def iniciar_tunel_seguro():
-    # Evitamos que se ejecute dos veces (al guardar cambios)
     if not sys.argv[0].endswith("uvicorn"): 
         return
 
@@ -35,12 +29,9 @@ def iniciar_tunel_seguro():
 
     print("Iniciando infraestructura de red remota...")
     
-    # 2. Configuramos Ngrok con tu token
     conf.get_default().auth_token = NGROK_TOKEN
     
-    # 3. Abrimos el túnel al puerto 8000
     try:
-        # pyngrok descarga y gestiona el binario por ti
         tunel = ngrok.connect(8000)
         public_url = tunel.public_url
         
