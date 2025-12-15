@@ -43,7 +43,7 @@ def iniciar_tunel_seguro():
     except Exception as e:
         print(f"Error al iniciar el túnel: {e}")
 
-# Ejecutamos la función
+
 try:
     iniciar_tunel_seguro()
 except Exception:
@@ -156,20 +156,17 @@ def subir_clave_publica(
     
     print(f"--- REGENERANDO CLAVES PARA: {usuario_actual.nombre} ---")
 
-    # 1. ELIMINAR MIS DOCUMENTOS (Porque mi firma ya no será válida y no podré descifrarlos)
-    # Al borrar el documento, la configuración 'cascade' borrará las DEKs de todos los demás.
+
     num_docs = db.query(modelos.Documento).filter(
         modelos.Documento.propietario_id == usuario_actual.id
     ).delete()
     print(f" -> Eliminados {num_docs} documentos propios.")
 
-    # 2. ELIMINAR MIS ACCESOS A ARCHIVOS DE OTROS (Porque cambié mi llave privada y no podré abrir las DEKs viejas)
     num_deks = db.query(modelos.DEK).filter(
         modelos.DEK.usuario_uuid == usuario_actual.uuid
     ).delete()
     print(f" -> Eliminados {num_deks} accesos a documentos de terceros.")
     
-    # 3. Actualizar la clave pública
     usuario_actual.clave_publica = datos_clave.clave_publica
     
     db.commit()

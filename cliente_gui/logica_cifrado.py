@@ -1,10 +1,16 @@
-
 import os, json, base64, zipfile
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes as _hashes
 from cryptography.hazmat.primitives.asymmetric import padding as asympadding
+
+# --- FUNCIONES AUXILIARES ---
+def hex_str(data: bytes, max_len=32) -> str:
+    h = data.hex().upper()
+    if len(h) > max_len:
+        return h[:max_len] + "..."
+    return h
 
 def sign_plaintext(plaintext: bytes, priv_pem_path: str, password: bytes) -> bytes:
     with open(priv_pem_path, "rb") as f:
@@ -42,25 +48,41 @@ def crear_paquete_cifrado(
     ruta_clave_privada_autor: str,
     password_clave_privada: str,
     uuid_autor: str,
-    receptores: list
+    receptores: list,
+    log_callback=None
 ) -> (str, dict):
 
+    if log_callback: log_callback(f"--- INICIANDO PROCESO DE CIFRADO HÍBRIDO ---", "CRYPTO_START")
+
+    # 1. LEER ARCHIVO
     with open(ruta_archivo_original, "rb") as f:
         plaintext = f.read()
+    if log_callback: log_callback(f"Archivo leído: {os.path.basename(ruta_archivo_original)}", "IO")
 
+    # 2. FIRMAR DOCUMENTO (RSA-PSS) - SIN CIFRAR
+    if log_callback: log_callback("Generando Firma Digital (Visible en Base64)...", "SIGN")
     try:
         sig = sign_plaintext(
             plaintext,
             ruta_clave_privada_autor,
             password_clave_privada.encode("utf-8")
         )
+        # Convertimos la firma RAW a Base64 para que sea legible en el JSON
+        firma_visible_b64 = base64.b64encode(sig).decode("ascii")
+        
+        if log_callback: log_callback(f"Firma B64 generada: {firma_visible_b64[:30]}...", "SIGN_OK")
     except Exception as e:
-        raise Exception(f"Contraseña de clave privada incorrecta o clave inválida. {e}")
+        raise Exception(f"Error en firma: {e}")
 
+    # 3. GENERAR LLAVE SIMÉTRICA (AES-256)
     dek = AESGCM.generate_key(bit_length=256)
-    ciphertext, iv = aes_encrypt(dek, plaintext)
-    sig_enc, iv_sig = aes_encrypt(dek, sig)
+    if log_callback: log_callback(f"Llave Simétrica generada: {hex_str(dek)}", "AES_KEY")
 
+    # 4. CIFRADO SIMÉTRICO (AES-GCM) SOLO DEL CONTENIDO
+    if log_callback: log_callback("Cifrando contenido del archivo...", "AES_ENC")
+    ciphertext, iv = aes_encrypt(dek, plaintext)
+    
+    # 5. ENCAPSULAMIENTO DE LLAVES (RSA-OAEP)
     deks_cifradas_api = []
     wrapped_keys_map = {}
 
@@ -73,14 +95,18 @@ def crear_paquete_cifrado(
         })
         wrapped_keys_map[receptor["uuid"]] = wrapped_b64
 
+    # 6. EMPAQUETADO
+    f_blob = "data.bin"
+    f_iv_cont = "data.iv"
+    f_meta = "meta.json"
+
     meta_zip = {
-        "original_filename": os.path.basename(ruta_archivo_original),
-        "cipherfile": "data.enc",
-        "ivfile": "data.iv",
-        "sigfile_enc": "sig.enc",
-        "iv_sig": base64.b64encode(iv_sig).decode("ascii"),
-        "author_uuid": uuid_autor,
-        "wrapped_keys": wrapped_keys_map
+        "recurso_id": os.path.basename(ruta_archivo_original),
+        "cifrado": f_blob,        # <--- CAMBIO: Ahora se llama "cifrado"
+        "iv_contenido": f_iv_cont,
+        "firma_b64": firma_visible_b64, # <--- CAMBIO: Firma visible (texto), no archivo cifrado
+        "propietario_uuid": uuid_autor,
+        "almacen_llaves": wrapped_keys_map
     }
 
     metadata_api = {
@@ -91,24 +117,21 @@ def crear_paquete_cifrado(
     base = os.path.splitext(os.path.basename(ruta_archivo_original))[0]
     out_zip = f"{base}_temp_secure.zip"
 
-    with open("data.enc", "wb") as f:
-        f.write(ciphertext)
-    with open("data.iv", "wb") as f:
-        f.write(iv)
-    with open("sig.enc", "wb") as f:
-        f.write(sig_enc)
-    with open("meta.json", "w", encoding="utf-8") as f:
-        json.dump(meta_zip, f, indent=2)
+    # Escribir archivos físicos
+    with open(f_blob, "wb") as f: f.write(ciphertext)
+    with open(f_iv_cont, "wb") as f: f.write(iv)
+    with open(f_meta, "w", encoding="utf-8") as f: json.dump(meta_zip, f, indent=2)
 
     try:
         with zipfile.ZipFile(out_zip, "w", compression=zipfile.ZIP_DEFLATED) as z:
-            z.write("data.enc")
-            z.write("data.iv")
-            z.write("sig.enc")
-            z.write("meta.json")
+            z.write(f_blob)
+            z.write(f_iv_cont)
+            z.write(f_meta) # Nota: Ya no metemos sig.enc, porque está en el meta.json
     finally:
-        for t in ("data.enc", "data.iv", "sig.enc", "meta.json"):
+        for t in (f_blob, f_iv_cont, f_meta):
             if os.path.exists(t):
                 os.remove(t)
+    
+    if log_callback: log_callback(f"Paquete generado exitosamente.", "DONE")
 
     return out_zip, metadata_api

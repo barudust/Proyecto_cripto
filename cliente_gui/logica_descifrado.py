@@ -1,4 +1,3 @@
-
 import json, base64, zipfile, io
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import serialization
@@ -28,28 +27,34 @@ def descifrar_contenido(
     try:
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as z:
             meta = json.loads(z.read("meta.json").decode("utf-8"))
-            ciphertext = z.read(meta["cipherfile"])
-            iv = z.read(meta["ivfile"])
-            sig_enc = z.read(meta["sigfile_enc"])
-            iv_sig = base64.b64decode(meta["iv_sig"])
-            author_uuid = meta["author_uuid"]
-            wrapped_map = meta.get("wrapped_keys", {})
+            
+            # 1. Leer contenido cifrado con el nuevo nombre
+            ciphertext = z.read(meta["cifrado"]) 
+            iv = z.read(meta["iv_contenido"])
+            
+            # 2. Leer firma directamente del JSON (Base64 -> Bytes)
+            firma_b64 = meta["firma_b64"]
+            firma_bytes = base64.b64decode(firma_b64)
+            
+            author_uuid = meta["propietario_uuid"]
+            wrapped_map = meta.get("almacen_llaves", {})
+            
     except Exception as e:
-        raise Exception(f"Error leyendo ZIP: {e}")
+        raise Exception(f"Error estructura ZIP: {e}")
 
     if mi_uuid not in wrapped_map:
-        raise Exception("No tienes permiso para abrir este archivo (Tu UUID no está en la lista).")
+        raise Exception("Acceso Denegado: No tienes llave para este archivo.")
 
     try:
         dek = unwrap_dek(wrapped_map[mi_uuid], ruta_clave_privada, password_clave_privada.encode('utf-8'))
     except Exception as e:
-        raise Exception(f"Error de clave privada/contraseña: {e}")
+        raise Exception(f"Error desencapsulando llave (RSA): {e}")
 
     try:
+        # Solo desciframos el contenido, la firma ya viene lista
         plaintext = aes_decrypt(dek, iv, ciphertext)
-        firma_bytes = aes_decrypt(dek, iv_sig, sig_enc)
     except Exception as e:
-        raise Exception(f"Error al descifrar los datos con la DEK: {e}")
+        raise Exception(f"Error descifrando contenido (AES): {e}")
 
     return plaintext, firma_bytes, author_uuid
 
