@@ -85,7 +85,7 @@ class VentanaLogin:
         btn_registrar = tk.Button(button_frame, 
                                  text="Registrarse", 
                                  command=self.ejecutar_registro, 
-                                 font=("Segoe UI", 14),
+                                 font=("Segoe UI", 16, "bold"),
                                  bg=self.colores['secondary'],
                                  fg='white',
                                  relief='flat',
