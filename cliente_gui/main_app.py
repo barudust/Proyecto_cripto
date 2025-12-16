@@ -93,7 +93,7 @@ class App:
         logo_frame = ttk.Frame(header_frame, style='TFrame')
         logo_frame.pack(fill='x')
         
-        title_label = ttk.Label(logo_frame, text="Bufete Legal Seguro - Sistema Zero-Knowledge", style='Title.TLabel')
+        title_label = ttk.Label(logo_frame, text="Bufete Legal Seguro - Sistema de Documentos", style='Title.TLabel')
         title_label.pack(side='left')
         
         if self.nombre_usuario:
