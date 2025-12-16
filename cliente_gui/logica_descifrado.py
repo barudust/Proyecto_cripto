@@ -28,33 +28,29 @@ def descifrar_contenido(
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as z:
             meta = json.loads(z.read("meta.json").decode("utf-8"))
             
-            # 1. Leer contenido cifrado con el nuevo nombre
-            ciphertext = z.read(meta["cifrado"]) 
-            iv = z.read(meta["iv_contenido"])
-            
-            # 2. Leer firma directamente del JSON (Base64 -> Bytes)
-            firma_b64 = meta["firma_b64"]
-            firma_bytes = base64.b64decode(firma_b64)
+            # --- DECODIFICAMOS DE BASE64 A BYTES ---
+            ciphertext = base64.b64decode(meta["contenido_cifrado_b64"])
+            iv = base64.b64decode(meta["iv_contenido_b64"])
+            firma_bytes = base64.b64decode(meta["firma_digital_b64"])
             
             author_uuid = meta["propietario_uuid"]
             wrapped_map = meta.get("almacen_llaves", {})
             
     except Exception as e:
-        raise Exception(f"Error estructura ZIP: {e}")
+        raise Exception(f"Error leyendo JSON Base64: {e}")
 
     if mi_uuid not in wrapped_map:
-        raise Exception("Acceso Denegado: No tienes llave para este archivo.")
+        raise Exception("Acceso Denegado.")
 
     try:
         dek = unwrap_dek(wrapped_map[mi_uuid], ruta_clave_privada, password_clave_privada.encode('utf-8'))
     except Exception as e:
-        raise Exception(f"Error desencapsulando llave (RSA): {e}")
+        raise Exception(f"Error llave privada/RSA: {e}")
 
     try:
-        # Solo desciframos el contenido, la firma ya viene lista
         plaintext = aes_decrypt(dek, iv, ciphertext)
     except Exception as e:
-        raise Exception(f"Error descifrando contenido (AES): {e}")
+        raise Exception(f"Error descifrado AES: {e}")
 
     return plaintext, firma_bytes, author_uuid
 
