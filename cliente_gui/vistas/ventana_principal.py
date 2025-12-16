@@ -128,7 +128,7 @@ class VentanaPrincipal:
         
         user_label = tk.Label(header_frame, 
                              text=f"👤 Usuario: {self.app.nombre_usuario}{rol_txt}", 
-                             font=("Segoe UI", 26, "bold"), 
+                             font=("Segoe UI", 34, "bold"), 
                              fg=color_u, bg=self.colores['light'])
         user_label.pack(side="left")
         
@@ -161,7 +161,7 @@ class VentanaPrincipal:
         btn_cifrar.pack(side="left", padx=15, fill="x", expand=True)
 
         # --- BANDEJA ---
-        docs_label = tk.Label(main_frame, text="📁 Bandeja de Documentos Cifrados:", font=("Segoe UI", 24, "bold"),
+        docs_label = tk.Label(main_frame, text="📁 Bandeja de Documentos Cifrados:", font=("Segoe UI", 26, "bold"),
                              fg=self.colores['primary'], bg=self.colores['light'])
         docs_label.pack(anchor="w", pady=(25, 15))
         
@@ -169,7 +169,7 @@ class VentanaPrincipal:
         list_frame.pack(fill="both", expand=True, pady=20)
         
         list_scrollbar = tk.Scrollbar(list_frame, orient="vertical", bg=self.colores['light'])
-        self.lista_documentos = tk.Listbox(list_frame, yscrollcommand=list_scrollbar.set, height=12, font=("Segoe UI", 20),
+        self.lista_documentos = tk.Listbox(list_frame, yscrollcommand=list_scrollbar.set, height=12, font=("Segoe UI", 25),
                                           bg='white', fg=self.colores['text'], selectbackground=self.colores['primary'], selectforeground='white')
         list_scrollbar.config(command=self.lista_documentos.yview)
         list_scrollbar.pack(side="right", fill="y")
@@ -185,11 +185,11 @@ class VentanaPrincipal:
         row1_frame.pack(fill="x", pady=8)
         
         btn_descifrar = tk.Button(row1_frame, text="📂 Descifrar y Guardar", command=self.accion_solo_descifrar, 
-                                 bg=self.colores['success'], fg='white', font=("Segoe UI", 18), relief='flat', height=2)
+                                 bg=self.colores['success'], fg='white', font=("Segoe UI", 22, "bold"), relief='flat', height=2)
         btn_descifrar.pack(side="left", padx=10, fill="x", expand=True)
         
         btn_verificar = tk.Button(row1_frame, text="✅ Verificar Firma (App)", command=self.accion_solo_verificar, 
-                                 bg=self.colores['warning'], fg='white', font=("Segoe UI", 18), relief='flat', height=2)
+                                 bg=self.colores['warning'], fg='white', font=("Segoe UI", 22, "bold"), relief='flat', height=2)
         btn_verificar.pack(side="left", padx=10, fill="x", expand=True)
 
         # Fila 2: Operaciones de Auditoría (Lo que pidió la Profa)
@@ -198,12 +198,12 @@ class VentanaPrincipal:
 
         # BOTÓN NUEVO: Descargar ZIP RAW
         btn_raw_zip = tk.Button(row2_frame, text="💾 Bajar ZIP Cifrado (Raw)", command=self.accion_bajar_zip_raw, 
-                               bg='#555555', fg='white', font=("Segoe UI", 17, "bold"), relief='flat', height=2)
+                               bg='#555555', fg='white', font=("Segoe UI", 22, "bold"), relief='flat', height=2)
         btn_raw_zip.pack(side="left", padx=10, fill="x", expand=True)
 
         # BOTÓN NUEVO: Descargar Llave Pública
         btn_pub_key = tk.Button(row2_frame, text="🔑 Bajar Key Pública del Autor", command=self.accion_bajar_public_key, 
-                               bg='#777777', fg='white', font=("Segoe UI", 17, "bold"), relief='flat', height=2)
+                               bg='#777777', fg='white', font=("Segoe UI", 22, "bold"), relief='flat', height=2)
         btn_pub_key.pack(side="left", padx=10, fill="x", expand=True)
 
         # Espacio al final para asegurar que todo se vea bien

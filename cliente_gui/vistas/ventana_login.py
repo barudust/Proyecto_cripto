@@ -20,7 +20,7 @@ class VentanaLogin:
                          font=("Segoe UI", 22, "bold"),
                          fg=self.colores['primary'],
                          bg=self.colores['light'])
-        titulo.pack(pady=(0, 30))
+        titulo.pack(pady=(0, 25))
 
         # Frame para los campos del formulario
         form_frame = tk.Frame(self.frame, bg=self.colores['light'])
@@ -29,43 +29,43 @@ class VentanaLogin:
         # Campo Usuario
         lbl_usuario = tk.Label(form_frame, 
                               text="Usuario:", 
-                              font=("Segoe UI", 15),
+                              font=("Segoe UI", 25),
                               fg=self.colores['text'],
                               bg=self.colores['light'])
-        lbl_usuario.grid(row=0, column=0, sticky="e", pady=15, padx=10)
+        lbl_usuario.grid(row=0, column=0, sticky="e", pady=25, padx=10)
         
         self.entry_usuario = tk.Entry(form_frame, 
-                                     font=("Segoe UI", 15),
-                                     width=30,
+                                     font=("Segoe UI", 25),
+                                     width=25,
                                      bg='white',
                                      fg=self.colores['text'],
                                      insertbackground=self.colores['primary'],
                                      relief='solid',
                                      borderwidth=2)
-        self.entry_usuario.grid(row=0, column=1, pady=15, padx=10, ipady=8)
+        self.entry_usuario.grid(row=0, column=1, pady=25, padx=10, ipady=8)
 
         # Campo Contraseña
         lbl_pass = tk.Label(form_frame, 
                            text="Contraseña:", 
-                           font=("Segoe UI", 15),
+                           font=("Segoe UI", 25),
                            fg=self.colores['text'],
                            bg=self.colores['light'])
-        lbl_pass.grid(row=1, column=0, sticky="e", pady=15, padx=10)
+        lbl_pass.grid(row=1, column=0, sticky="e", pady=25, padx=10)
         
         self.entry_pass = tk.Entry(form_frame, 
-                                  font=("Segoe UI", 15),
-                                  width=30,
+                                  font=("Segoe UI", 25),
+                                  width=25,
                                   show="•",
                                   bg='white',
                                   fg=self.colores['text'],
                                   insertbackground=self.colores['primary'],
                                   relief='solid',
                                   borderwidth=2)
-        self.entry_pass.grid(row=1, column=1, pady=15, padx=10, ipady=8)
+        self.entry_pass.grid(row=1, column=1, pady=25, padx=10, ipady=8)
 
         # Frame para botones
         button_frame = tk.Frame(self.frame, bg=self.colores['light'])
-        button_frame.pack(pady=30)
+        button_frame.pack(pady=25)
 
         # Botón Iniciar Sesión
         btn_login = tk.Button(button_frame, 
@@ -100,7 +100,7 @@ class VentanaLogin:
                                font=("Segoe UI", 12),
                                fg=self.colores['text_light'],
                                bg=self.colores['light'])
-        info_codigos.pack(side="bottom", pady=15)
+        info_codigos.pack(side="bottom", pady=25)
         
         # Bind Enter key para facilitar el login
         self.entry_usuario.bind('<Return>', lambda e: self.entry_pass.focus())
