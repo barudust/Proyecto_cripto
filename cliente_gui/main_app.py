@@ -61,7 +61,7 @@ class App:
         style.theme_use('clam')
         style.configure('TFrame', background=self.colores['primary'])
         style.configure('Card.TFrame', background=self.colores['primary'])
-        style.configure('Title.TLabel', font=('Segoe UI', 32, 'bold'), foreground=self.colores['light'], background=self.colores['primary'])
+        style.configure('Title.TLabel', font=('Segoe UI', 36, 'bold'), foreground=self.colores['light'], background=self.colores['primary'])
         style.configure('Subtitle.TLabel', font=('Segoe UI', 15), foreground=self.colores['light'], background=self.colores['primary'])
         style.configure('Card.TLabel', font=('Segoe UI', 12), foreground=self.colores['text'], background=self.colores['white'])
         style.configure('Primary.TButton', font=('Segoe UI', 10, 'bold'), background=self.colores['primary'], foreground=self.colores['white'], borderwidth=0, focuscolor='none')
